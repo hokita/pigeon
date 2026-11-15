@@ -32,7 +32,7 @@ Muse picks the layout while it collects. It sends the content and a JSON compone
 - A price chart showing a number pigeon never recorded as an observation.
 - A bad UI tree that blanks the page or loses the item's content.
 - Running anything Muse sent as code or HTML.
-- A token, real email address or project-private value committed to this public repo.
+- A deploy credential, the MCP token or a real email address committed to this public repo. (The project ID, backend URL and Firebase web config may be committed in workflows, as owlet and hamster do; owner, 2026-11-15.)
 - A separate hand-built page layout for each content type. Layout comes from the tree.
 - A fixed list of item types in code. Types come from what Muse saves.
 - Shop-specific code. Price history works the same way for every shop.
@@ -327,7 +327,7 @@ This copies owlet and hamster (both read 2026-11-15, read-only): one GCP/Firebas
 8. **Budget:** a ¥100 alert on the billing account, scoped to the project, as owlet has.
 9. **MCP token switch (owlet's pattern):** `backend.yml` adds `PIGEON_MCP_TOKEN=${PIGEON_MCP_TOKEN_SECRET}:latest` to `--set-secrets` only when the repo variable `PIGEON_MCP_TOKEN_SECRET` is set. Deploys work before the secret exists, with `/mcp` off (the matcher is off when unset, §9).
 
-**Workflows** are owlet's four files with `owlet` → `pigeon`. As in owlet, the project ID, the Cloud Run URL and the Firebase web config are written in the workflow files (they're public by design; owlet and hamster, both public repos, do the same), and only the WIF values are secrets. Order, as in hamster: the deploy task starts only when the owner gives the project ID. The backend is deployed once to get its URL, then `frontend.yml` is written with the real URL. No placeholder is ever committed. Cloud Run: `pigeon-backend`, `--allow-unauthenticated` (the app's own auth is the gate), `--min-instances 0`, `--max-instances 2`. `firebase-tools@15.22.1` as in owlet.
+**Workflows** are owlet's four files with `owlet` → `pigeon`. As in owlet, the project ID, the Cloud Run URL and the Firebase web config are written in the workflow files (they're public by design; owlet and hamster, both public repos, do the same; the owner approved this for pigeon on 2026-11-15). Only deploy credentials (WIF values), the MCP token and the owner's email stay secret. Order, as in hamster: the deploy task starts only when the owner gives the project ID. The backend is deployed once to get its URL, then `frontend.yml` is written with the real URL. No placeholder is ever committed. Cloud Run: `pigeon-backend`, `--allow-unauthenticated` (the app's own auth is the gate), `--min-instances 0`, `--max-instances 2`. `firebase-tools@15.22.1` as in owlet.
 
 ## 14. Changes from the spec
 
@@ -353,3 +353,4 @@ None open. Answered on 2026-11-15:
 - **Currency:** JPY only.
 - **GCP:** the owner creates the project and billing and runs the setup commands; everything else follows owlet (§13).
 - **Retention:** keep items forever.
+- **Public config in the repo:** yes. The project ID, backend URL and Firebase web config may be committed in workflows; deploy credentials, the MCP token and the email stay secret.
