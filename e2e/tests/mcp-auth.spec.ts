@@ -40,3 +40,9 @@ test('saving the same item twice is unchanged', async ({ page }) => {
   await signIn(page)
   await expect(page.getByRole('link', { name: new RegExp(`Twice ${RUN}`) })).toHaveCount(1)
 })
+
+test('signing out returns to the sign-in page', async ({ page }) => {
+  await signIn(page)
+  await page.getByRole('button', { name: 'Sign out' }).click()
+  await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeVisible()
+})

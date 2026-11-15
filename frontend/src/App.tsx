@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { onAuthStateChanged } from 'firebase/auth'
+import { onAuthStateChanged, signOut } from 'firebase/auth'
 import type { User } from 'firebase/auth'
 import { auth } from './firebase'
 import { parseRoute, routePath, type Route } from './router'
@@ -31,6 +31,23 @@ export default function App() {
 
   if (user === undefined) return null
   if (!user) return <LoginPage />
-  if (route.page === 'item') return <ItemPage key={route.id} id={route.id} navigate={navigate} />
-  return <FeedPage key={route.type ?? ''} type={route.type} navigate={navigate} />
+  return (
+    <>
+      {/* Lets the owner switch accounts, e.g. after signing in with one not in ALLOWED_EMAILS. */}
+      <div className="max-w-3xl mx-auto px-4 pt-3 flex justify-end">
+        <button
+          type="button"
+          onClick={() => void signOut(auth)}
+          className="text-sm text-muted-foreground rounded-md border border-border px-3 py-1"
+        >
+          Sign out
+        </button>
+      </div>
+      {route.page === 'item' ? (
+        <ItemPage key={route.id} id={route.id} navigate={navigate} />
+      ) : (
+        <FeedPage key={route.type ?? ''} type={route.type} navigate={navigate} />
+      )}
+    </>
+  )
 }

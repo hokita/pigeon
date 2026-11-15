@@ -2,9 +2,15 @@ import { render, screen, fireEvent, act } from '@testing-library/react'
 import { beforeEach, describe, it, expect, vi } from 'vitest'
 import type { Route } from './router'
 
-const { mockOnAuthStateChanged } = vi.hoisted(() => ({ mockOnAuthStateChanged: vi.fn() }))
+const { mockOnAuthStateChanged, mockSignOut } = vi.hoisted(() => ({
+  mockOnAuthStateChanged: vi.fn(),
+  mockSignOut: vi.fn().mockResolvedValue(undefined),
+}))
 
-vi.mock('firebase/auth', () => ({ onAuthStateChanged: mockOnAuthStateChanged }))
+vi.mock('firebase/auth', () => ({
+  onAuthStateChanged: mockOnAuthStateChanged,
+  signOut: mockSignOut,
+}))
 vi.mock('./firebase', () => ({ auth: {} }))
 vi.mock('./pages/LoginPage', () => ({ default: () => <div>login page</div> }))
 vi.mock('./pages/FeedPage', () => ({
@@ -66,5 +72,21 @@ describe('App', () => {
       window.dispatchEvent(new PopStateEvent('popstate'))
     })
     expect(screen.getByText('feed page all')).toBeInTheDocument()
+  })
+
+  it('signed in, a Sign out button signs out', () => {
+    signedIn()
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    expect(mockSignOut).toHaveBeenCalledTimes(1)
+  })
+
+  it('signed out, there is no Sign out button', () => {
+    mockOnAuthStateChanged.mockImplementation((_auth, callback) => {
+      callback(null)
+      return () => {}
+    })
+    render(<App />)
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull()
   })
 })

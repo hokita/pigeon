@@ -9,7 +9,7 @@ export const TEST_PASSWORD = 'e2e-test-password-123'
 export async function signIn(page: Page, path = '/') {
   await page.goto(path)
   await page.getByRole('button', { name: 'Sign in with Google' }).click()
-  await expect(page.getByRole('button', { name: 'Sign in with Google' })).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 }
 
 // Serve every example image host from a local PNG so runs stay offline.
