@@ -167,7 +167,7 @@ The item's `content` (Markdown summary, sources, products with observed prices) 
 | `title`, `summary` | string | |
 | `content` | `{ markdown: string, sources: {title, url, publisher?, publishedAt?}[] }` | Muse's write-up. Labelled "Written by Muse" in the UI. |
 | `products` | `{ productId, productKey?, name, url, canonicalUrl, price, listPrice?, imageUrl?, retailer?, observedAt, change? }[]` (`change` set at save time, §7.2) | optional on any type; `[]` when absent. Prices are integer JPY. |
-| `ui` | `{ schemaVersion: 1, root }` or `null` | |
+| `uiJson` | JSON text of `{ schemaVersion: 1, root }`, or `null` | Stored as text because Firestore can't hold nested arrays (Table rows). The API returns it parsed, as `ui`. |
 | `uiStatus` | `"valid" \| "invalid" \| "missing"` | |
 | `uiSchemaVersion` | number or `null` | |
 | `dedupeKey` | string | |

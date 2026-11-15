@@ -7,5 +7,6 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.db.test.ts'],
     fileParallelism: false,
+    setupFiles: ['src/testing/dbSetup.ts'],
   },
 })

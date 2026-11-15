@@ -126,6 +126,12 @@ describe('parseFeedItemInput', () => {
     expect(message).toContain('products.1.imageUrl')
   })
 
+  it('rejects two entries for the same product', () => {
+    const raw = loadFixture('sample-price-drop')
+    raw.products[1] = { ...raw.products[0], url: 'https://shop.example.com/p/wh-2000?utm_medium=x' }
+    expect(error(raw)).toContain('products.1: Same product as products.0')
+  })
+
   it('rejects observedAt more than 5 minutes in the future', () => {
     const raw = loadFixture('sample-price-drop')
     raw.products[0].observedAt = new Date(now.getTime() + 6 * 60_000).toISOString()

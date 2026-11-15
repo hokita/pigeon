@@ -233,11 +233,14 @@ export function parseFeedItemInput(raw: unknown, now: Date): ParseResult {
   if (!parsed.success) return { ok: false, error: formatIssues(zodIssues(parsed.error)) }
   const input = parsed.data
 
-  const late: { path: PropertyKey[]; message: string }[] = []
+  const extraIssues: { path: PropertyKey[]; message: string }[] = []
   const products = (input.products ?? []).map((p, i): FeedProductInput => {
     const observedAt = p.observedAt ? new Date(p.observedAt) : now
     if (observedAt.getTime() > now.getTime() + CLOCK_SKEW_MS) {
-      late.push({ path: ['products', i, 'observedAt'], message: 'Must not be in the future' })
+      extraIssues.push({
+        path: ['products', i, 'observedAt'],
+        message: 'Must not be in the future',
+      })
     }
     return {
       name: p.name,
@@ -252,7 +255,12 @@ export function parseFeedItemInput(raw: unknown, now: Date): ParseResult {
       observedAt,
     }
   })
-  if (late.length > 0) return { ok: false, error: formatIssues(late) }
+  products.forEach((p, i) => {
+    const first = products.findIndex((q) => q.productId === p.productId)
+    if (first < i)
+      extraIssues.push({ path: ['products', i], message: `Same product as products.${first}` })
+  })
+  if (extraIssues.length > 0) return { ok: false, error: formatIssues(extraIssues) }
 
   const publishedAt = input.publishedAt ? new Date(input.publishedAt) : null
   const value: FeedItemInput = {
