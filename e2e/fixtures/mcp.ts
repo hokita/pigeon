@@ -1,0 +1,41 @@
+import { readFileSync } from 'node:fs'
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
+
+export const MCP_URL = 'http://127.0.0.1:8190/mcp'
+export const MCP_TOKEN = 'e2e-mcp-token-' + 'x'.repeat(50)
+
+// A unique id per test run, so saved items never collide with earlier runs.
+export const RUN = Date.now().toString(36)
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- fixtures are edited freely in tests
+export function fixture(name: string): Record<string, any> {
+  return JSON.parse(readFileSync(new URL(`../../fixtures/${name}.json`, import.meta.url), 'utf8'))
+}
+
+export type SaveResult = {
+  id: string
+  status: string
+  uiStatus: string
+  uiIssues?: unknown[]
+  url: string
+}
+
+export async function saveItem(input: object, overrides: object = {}): Promise<SaveResult> {
+  const client = new Client({ name: 'e2e', version: '0' })
+  await client.connect(
+    new StreamableHTTPClientTransport(new URL(MCP_URL), {
+      requestInit: { headers: { Authorization: `Bearer ${MCP_TOKEN}` } },
+    })
+  )
+  try {
+    const result = await client.callTool({
+      name: 'save_feed_item',
+      arguments: { ...input, ...overrides },
+    })
+    const text = (result.content as { type: string; text: string }[])[0].text
+    if (result.isError) throw new Error(text)
+    return JSON.parse(text)
+  } finally {
+    await client.close()
+  }
+}

@@ -35,7 +35,7 @@ check() {
 v="${expected//./\\.}"
 check "Dockerfile FROM" 2 '^FROM ' "^FROM node:${v}-alpine( AS [a-z]+)?$" backend/Dockerfile
 check "setup-node node-version" 0 'node-version:' "node-version: '${v}'$" .github/workflows/*.yml
-check "Volta node" 2 '"node":' "\"node\": \"${v}\"$" backend/package.json frontend/package.json
+check "Volta node" 3 '"node":' "\"node\": \"${v}\"$" backend/package.json frontend/package.json e2e/package.json
 
 if [ "$bad" -ne 0 ]; then
   echo "Node pins are not all ${expected}"
