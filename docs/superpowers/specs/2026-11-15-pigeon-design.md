@@ -6,15 +6,17 @@ Status: draft for the owner's approval (2026-11-15). Requirements: [`docs/spec/2
 
 Muse (Meta's AI assistant; it runs in Meta's cloud) already runs the owner's scheduled research: a daily news digest, product price watching, other recurring lookups. Its own interface is poor for browsing, comparing and looking back. pigeon is a personal web app that keeps what Muse collects and shows each item as a rich response, mixing text, images, tables, charts, timelines and cards the way a good ChatGPT answer does.
 
+Items are open-ended: a news digest, a research write-up, a price drop, anything Muse collects. Each item has a free-form `type` (a short slug Muse picks), and the feed filters by it. Price history is one small, optional extension (§7.2) that any item can use by listing products; it isn't the centre of the app.
+
 Muse picks the layout while it collects. It sends the content and a JSON component tree through one MCP tool. pigeon validates and stores both and renders the stored tree whenever the owner opens it. Viewing an item never calls an LLM.
 
 ## 2. Goals, non-goals, anti-goals
 
 **Goals (MVP)**
 
-- An MCP tool `save_feed_item` that Muse can call from a scheduled task to save one news or product item with its UI tree.
-- Firestore storage of the item, its sources, its UI tree and its schema version, plus a price history for each product built only from real observations.
-- A REST API and a React app with two pages: a feed (newest first, news/product filter, mobile first) and a detail page that renders the stored tree with assistant-ui's generative UI renderer. The detail page supports dark mode.
+- An MCP tool `save_feed_item` that Muse can call from a scheduled task to save one item of any type with its UI tree.
+- Firestore storage of the item, its sources, its UI tree and its schema version, plus, when an item lists products, a price history per product built only from real observations.
+- A REST API and a React app with two pages: a feed (newest first, filter by any `type` that exists, mobile first) and a detail page that renders the stored tree with assistant-ui's generative UI renderer. The detail page supports dark mode.
 - The whole flow is tested locally with no Muse involved: sample JSON → MCP tool → backend → Firestore emulator → REST API → React renderer, covered by Playwright.
 - Phase 4 adds the Muse connection, the prompt and the instructions, and runs after the deploy. Bearer auth was confirmed by the owlet Muse test (2026-11-15).
 
@@ -32,6 +34,8 @@ Muse picks the layout while it collects. It sends the content and a JSON compone
 - Running anything Muse sent as code or HTML.
 - A token, real email address or project-private value committed to this public repo.
 - A separate hand-built page layout for each content type. Layout comes from the tree.
+- A fixed list of item types in code. Types come from what Muse saves.
+- Shop-specific code. Price history works the same way for every shop.
 
 ## 3. Constraints
 
@@ -83,7 +87,7 @@ owlet's `feat/mcp-server` branch (`backend/src/mcp/server.ts`) uses `@modelconte
 - **Verified (Meta pages exist):** the Muse Help Center has articles on connectors (<https://www.meta.com/help/artificial-intelligence/1687253048996149/>) and on reminders and scheduled tasks (<https://www.meta.com/help/artificial-intelligence/1484325780075655/>). Scheduled tasks run on a schedule. Meta's Connect recap (<https://developers.meta.com/blog/meta-connect-recap/>) says Meta AI Connectors can connect a service "through an API or MCP server". The help pages render client-side, and I couldn't read their full text with my tools.
 - **Verified by a real test (2026-11-15, owlet):** the owner connected Muse to owlet's remote MCP server with an `Authorization: Bearer <token>` header, and Muse called owlet's custom tools successfully. So Muse accepts a custom remote MCP URL, sends a static Bearer header, and calls custom tools from a chat. pigeon uses the same auth (§9). No OAuth is needed.
 - **Still unverified:** whether Muse **scheduled tasks** can call custom MCP tools without the owner present, and any payload, timeout or tool-count limits. pigeon's limits (§6.3) are its own; a lower Muse limit would show up in Phase 4. Before the owlet test, third-party guides disagreed on auth: bearer header ([pallyy](https://pallyy.com/docs/api/mcp/meta-muse), [crosswalk](https://crosswalk.to/agents/muse/custom-connector), [tokenrip](https://tokenrip.com/blog/meta-muse-custom-connector)), OAuth ([anythingmcp](https://anythingmcp.com/guides/clients/muse), [arcade](https://www.arcade.dev/blog/connect-meta-muse-mcp-gateway/)), and "not documented in the consumer app" ([aiagentslibrary](https://www.aiagentslibrary.com/blog/meta-muse-mcp/), [twitterapi.io](https://twitterapi.io/blog/muse-connectors)).
-- **Plan:** nothing in Phases 1–3 depends on Muse. Phase 4 is no longer blocked on auth; it needs only the deployed backend (Task 22). The scheduled-task question is answered in Phase 4 itself (plan Task 25): if scheduled tasks can't call custom tools, pigeon still works, but items are saved only from chats the owner starts, and the docs say so (§16 Q1).
+- **Plan:** nothing in Phases 1–3 depends on Muse. Phase 4 is no longer blocked on auth; it needs only the deployed backend (Task 22). The scheduled-task question is answered in Phase 4 itself (plan Task 25): the owner will use both chat and scheduled tasks. If scheduled tasks turn out unable to call custom tools, chat saves still work, and `docs/muse.md` records the limit.
 
 ### 4.4 Markdown and charts
 
@@ -131,7 +135,7 @@ owlet's `feat/mcp-server` branch (`backend/src/mcp/server.ts`) uses `@modelconte
 | `Citation` | `title`, `url?` (http(s)), `source?`, `snippet?` (≤ 500) | no |
 | `Fact` | `label`, `value`, `delta?`, `trend?`, `upIsGood?` | no |
 | `Badge` | `value` (≤ 40), `variant?` | no |
-| `PriceHistory` (custom) | `productUrl` (https URL of a product in this item's `products`), `title?` | no |
+| `PriceHistory` (custom) | `product` (the `productKey` or the `url` of one entry in this item's `products`), `title?` | no |
 
 Everything else, including `Box`, `Button`, form controls, `Diagram`, `Map`, `Icon`, `Carousel`, `ListView`, `Spacer` and any `_action`, is rejected in v1. Adding a component later means adding a row here, a library entry and a test, with the same `schemaVersion`. Changing the meaning of an existing prop bumps `schemaVersion`.
 
@@ -159,10 +163,10 @@ The item's `content` (Markdown summary, sources, products with observed prices) 
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `type` | `"news" \| "product"` | |
+| `type` | string slug `[a-z][a-z0-9-]{0,31}` | Muse's choice, e.g. `news`, `research`, `price-watch`. Not an enum. |
 | `title`, `summary` | string | |
 | `content` | `{ markdown: string, sources: {title, url, publisher?, publishedAt?}[] }` | Muse's write-up. Labelled "Written by Muse" in the UI. |
-| `products` | `{ productId, name, url, canonicalUrl, price, currency, listPrice?, imageUrl?, retailer?, observedAt }[]` | product items only |
+| `products` | `{ productId, productKey?, name, url, canonicalUrl, price, listPrice?, imageUrl?, retailer?, observedAt }[]` | optional on any type; `[]` when absent. Prices are integer JPY. |
 | `ui` | `{ schemaVersion: 1, root }` or `null` | |
 | `uiStatus` | `"valid" \| "invalid" \| "missing"` | |
 | `uiSchemaVersion` | number or `null` | |
@@ -174,25 +178,32 @@ The item's `content` (Markdown summary, sources, products with observed prices) 
 
 **itemId** = `i_` + first 20 hex chars of sha256(`dedupeKey`). **dedupeKey** is Muse's optional input (`[A-Za-z0-9:._/-]{1,200}`, e.g. `news:daily-ai:2026-11-15`). If missing, it defaults to `` `${type}:${normalizedTitle}:${jstDate(publishedAt ?? now)}` ``. Saving the same key again either updates the item (`status: "updated"`, `createdAt` kept) or, if `contentHash` matches, writes nothing (`status: "unchanged"`). The whole save runs in one Firestore transaction.
 
-### 7.2 Products and price history
+**`types/{type}`**: `{ type, count, lastItemAt }`, updated in the same transaction (count +1 on create; if an update changes an item's type, −1 on the old one and +1 on the new one; a type at 0 is deleted). The feed's filter reads this, so new types appear in the filter without code changes.
 
-`products/{productId}`: `{ canonicalUrl, name, retailer?, imageUrl?, currency, lastPrice, lastObservedAt, firstObservedAt }`
+### 7.2 Price history (optional, generic)
 
-`products/{productId}/observations/{itemId}`: `{ price, currency, observedAt, sourceUrl, itemId, createdAt }`
+Any item may list `products`. Nothing else in pigeon depends on them. There's no product item type, no shop-specific code, and prices are integer JPY only.
 
-- **Same product** means same `canonicalUrl(url)`, and `productId` = `p_` + first 20 hex chars of sha256(canonicalUrl). The canonicalization rules:
+`products/{productId}`: `{ identity: "key" | "url", productKey?, canonicalUrl, name, retailer?, imageUrl?, lastPrice, lastObservedAt, firstObservedAt }`
+
+`products/{productId}/observations/{itemId}`: `{ price, observedAt, sourceUrl, itemId, createdAt }`
+
+- **Same product** means:
+  1. the same `productKey`, when Muse sends one (`[A-Za-z0-9:._/-]{1,200}`, e.g. a shop's SKU or `jan:4901234567890`). `productId` = `p_` + first 20 hex chars of sha256(`"key:" + productKey`).
+  2. otherwise the same `canonicalUrl(url)`. `productId` = `p_` + first 20 hex chars of sha256(`"url:" + canonicalUrl`).
+- **`canonicalUrl` is generic and the same for every shop:**
   1. Parse with `new URL`. Require `https:` (`http:` is upgraded).
-  2. Lowercase the host, drop a leading `www.` and the default port, drop the fragment.
-  3. Drop tracking parameters: `utm_*`, `gclid`, `fbclid`, `yclid`, `msclkid`, `mc_cid`, `mc_eid`, `ref`, `ref_`, `tag`, `linkCode`, `camp`, `creative`, `psc`, `th`, `smid`, `spm`, `_encoding`, `ie`.
-  4. Amazon hosts (`amazon.<tld>`, `amazon.co.<tld>`): when the path has `/dp/<ASIN>`, `/gp/product/<ASIN>` or `/gp/aw/d/<ASIN>` (ASIN = 10 chars `[A-Z0-9]`), collapse to `https://amazon.<tld>/dp/<ASIN>` with no query.
-  5. Sort the remaining query parameters and drop a trailing `/` (except on the root path).
+  2. Lowercase the host, drop a leading `www.`, the default port and the fragment.
+  3. Drop tracking-only parameters (case-insensitive names): any `utm_*`, `fbclid`, `gclid`, `gbraid`, `wbraid`, `dclid`, `msclkid`, `yclid`, `twclid`, `ttclid`, `igshid`, `mc_cid`, `mc_eid`, `_ga`, `_gl`, `ref`, `ref_src`, `ref_url`, `referrer`, `spm`. The list lives in one exported constant.
+  4. Sort the remaining parameters and drop a trailing `/` (except on the root path).
+- **If identity isn't stable** (a shop puts session IDs in its URLs, or Muse changes the `productKey`), the history splits into two products. Nothing breaks: each one has fewer points, and the item still renders. The Muse prompt (Phase 4) asks for a `productKey` when the page shows a stable product code. That's the fix, not per-shop rules.
 - **One observation per (product, item)**, keyed by `itemId`. Resubmitting the same item overwrites its observation instead of adding a new one, so retries never invent history. `observedAt` = the product's `observedAt` from Muse, defaulting to the server's time. Must not be in the future (5 minutes of clock skew allowed).
 - **Only observations are history.** `listPrice` (a "was" price shown on the retailer page) is stored and shown as a page fact, never as a history point. The detail API computes `change` against the previous observation (`price − previous.price`, and the percentage). That number comes from pigeon's own records.
-- `PriceHistory {productUrl}` resolves through `canonicalUrl` to a product of the same item. The detail API returns `priceHistories: { [productId]: {observedAt, price, currency}[] }` (newest 365, oldest first), and the component renders the official `Chart` (`variant: "line"`, `showAxis: true`) from that. A single observation shows as a `Fact`, "First observation <date>", not as a one-point line.
+- `PriceHistory {product}` matches an entry of the same item by `productKey`, then by `url`, then by `canonicalUrl(product)`. The save validates that it matches (otherwise the tree is invalid, §6.4). The detail API returns `priceHistories: { [productId]: {observedAt, price}[] }` (newest 365, oldest first), and the component renders the official `Chart` (`variant: "line"`, `showAxis: true`) from that. A single observation shows as a `Fact`, "First observation <date>", not as a one-point line.
 
 ### 7.3 Indexes and rules
 
-- Composite index: `items` (`type` ASC, `createdAt` DESC). Single-field indexes cover the unfiltered feed and `observations` ordered by `observedAt`.
+- Composite index: `items` (`type` ASC, `createdAt` DESC). Single-field indexes cover the unfiltered feed, `types` ordered by `lastItemAt` and `observations` ordered by `observedAt`.
 - `firestore.rules`: deny all, copied from owlet. Only the Admin SDK in the backend touches data.
 
 ## 8. Rendering architecture (frontend)
@@ -210,7 +221,7 @@ DetailPage ── api.getItem(id) ──► { item, priceHistories }
 - **Official:** `renderGenerativeUI` and `defaultGenerativeUILibrary` (for `Header`, `Text`, `Caption`, `Image`, `Divider`, `Table`, `Chart`, `Timeline`, `Steps`, `Card`, `Row`, `Col`, `Tabs`, `Alert`, `Citation`, `Fact`, `Badge`), the per-element error boundaries, unknown-type dropping, `Citation` link filtering and `Image` `no-referrer`. Styling comes from the official `generative-ui-style` registry CSS, vendored into `frontend/src/generative-ui/aui.css` with its source URL and sha256 (`e4dfc7c6…44dd` as fetched 2026-11-15) in a header comment. pigeon defines the shadcn theme tokens it reads for light and dark in `index.css`.
 - **Custom:** `pigeonLibrary`, which picks the allowlisted entries and overrides `Card` to drop the removed props; `Markdown`, the official registry's react-markdown + remark-gfm component with pigeon's link and image handling plus `prose dark:prose-invert`; `PriceHistory`; `Unsupported`, the guard's placeholder; `guardTree`; `fallbackTree`; `RenderBoundary`; `migrateUi`. No `imageOrigins` allowlist, because news images come from arbitrary sites. `https` is enforced on save and again in the guard instead.
 - **Why no shadcn CLI:** `npx shadcn add` needs a shadcn project setup (`components.json`, `lib/utils`, a theme rewrite of `index.css`) that pigeon doesn't otherwise use. pigeon vendors the one CSS file instead, under its MIT license. Updating means fetching the registry JSON again and regenerating the file with `scripts/vendor-aui-css.mjs` (§12).
-- **Pages:** a tiny `history.pushState` router like owlet's: `/` is the feed (`?type=news|product`), `/items/:id` is the detail page. The feed shows cards with title, summary, type badge, date and, for products, the latest price and its change. Infinite "Load more" uses a cursor.
+- **Pages:** a tiny `history.pushState` router like owlet's: `/` is the feed (`?type=<slug>`), `/items/:id` is the detail page. The feed shows cards with title, summary, type badge, date and, when the item lists products, the first product's price and its change. The filter is `All` plus one chip per entry in `types` (most recent first), in a row that scrolls sideways on a phone; a `?type=` that has no entry still filters. Infinite "Load more" uses a cursor.
 - **Dark mode:** `prefers-color-scheme`, with the token values switched in CSS and Tailwind's `dark:` variant on its default media strategy. No toggle in the MVP.
 - **Reading layout:** one centred column (`max-w-3xl`, comfortable line height). Tables scroll sideways in their own container, images are `max-width: 100%`, and charts use the official SVG, sized to the column.
 
@@ -228,7 +239,7 @@ DetailPage ── api.getItem(id) ──► { item, priceHistories }
 
      ```ts
      {
-       type: "news" | "product",
+       type: string,                  // slug [a-z][a-z0-9-]{0,31}; reuse an existing one (get_ui_guide lists them)
        title: string,                 // 1–200
        summary: string,               // 1–500, plain text, shown in the feed
        publishedAt?: string,          // ISO 8601
@@ -237,8 +248,8 @@ DetailPage ── api.getItem(id) ──► { item, priceHistories }
          markdown: string,            // 1–20,000; Muse's write-up
          sources: { title: string; url: string; publisher?: string; publishedAt?: string }[] // 1–30
        },
-       products?: {                   // required (1–20) when type = "product"; rejected for news
-         name: string; url: string; price: number /* > 0 */; currency: string /* ISO 4217, e.g. JPY */;
+       products?: {                   // optional on any type, ≤ 20
+         name: string; url: string; productKey?: string /* §7.2 */; price: number /* integer JPY ≥ 0 */;
          listPrice?: number; imageUrl?: string; retailer?: string; observedAt?: string
        }[],
        ui?: { schemaVersion: 1 | "1.0"; root: Record<string, unknown> } // validated in the handler (§6.4)
@@ -251,7 +262,7 @@ DetailPage ── api.getItem(id) ──► { item, priceHistories }
 
      Errors (`isError: true`): `Invalid input: <field>: <message>` (zod issues, first 10), `Rate limit reached: try again in N seconds`, `Internal error`.
 
-  2. `get_ui_guide`, annotated `{ readOnlyHint: true }`, no input. It returns the v1 guide as text: the allowed components with their descriptions (the official descriptions plus pigeon's notes), the limits, the JSON Schema for one node from `buildPresentParameters(pigeonLibrary)`, and the two sample trees. Muse can read the rules when a task starts instead of carrying them all in its prompt.
+  2. `get_ui_guide`, annotated `{ readOnlyHint: true }`, no input. It returns the v1 guide as text: the allowed components with their descriptions (the official descriptions plus pigeon's notes), the limits, the JSON Schema for one node from `buildPresentParameters(pigeonLibrary)`, the sample trees, and the item types that already exist (from `types`, so Muse reuses `news` instead of inventing `daily-news`). Muse can read the rules when a task starts instead of carrying them all in its prompt.
 
 - **Server `instructions`** (sent at initialize): a short paragraph telling the client to call `get_ui_guide` before building a tree, to use only real URLs, and never to put historical prices in a `Chart`.
 
@@ -262,10 +273,11 @@ All `/api/*` routes need a Firebase ID token for an email in `ALLOWED_EMAILS` (o
 | Method and path | Response |
 | --- | --- |
 | `GET /health` | `{ ok: true }` (no auth) |
-| `GET /api/items?type=news\|product&limit=20&cursor=<opaque>` | `{ items: FeedItemSummary[], nextCursor: string \| null }`, newest `createdAt` first. `limit` 1–50. |
-| `GET /api/items/:id` | `{ item: FeedItemDetail, priceHistories: Record<productId, {observedAt, price, currency}[]> }`, or `404` |
+| `GET /api/types` | `{ types: {type, count, lastItemAt}[] }`, most recent first |
+| `GET /api/items?type=<slug>&limit=20&cursor=<opaque>` | `{ items: FeedItemSummary[], nextCursor: string \| null }`, newest `createdAt` first. `limit` 1–50. |
+| `GET /api/items/:id` | `{ item: FeedItemDetail, priceHistories: Record<productId, {observedAt, price}[]> }`, or `404` |
 
-`FeedItemSummary` = `{ id, type, title, summary, createdAt, publishedAt, products?: {name, price, currency, change?: {amount, percent}}[] }`. `FeedItemDetail` adds `content`, `ui`, `uiStatus` and the full `products`. Timestamps are ISO strings. The cursor is base64url of `{createdAt, id}`. Bad parameters get `400 {"error": "..."}`.
+`FeedItemSummary` = `{ id, type, title, summary, createdAt, publishedAt, products?: {name, price, change?: {amount, percent}}[] }`. `FeedItemDetail` adds `content`, `ui`, `uiStatus` and the full `products`. Timestamps are ISO strings. The cursor is base64url of `{createdAt, id}`. Bad parameters get `400 {"error": "..."}`.
 
 ## 11. Security summary
 
@@ -290,9 +302,9 @@ pigeon/
 ├── backend/      Express + MCP (Node 24.22.3, TypeScript, Vitest, supertest)
 ├── frontend/     React 19 + Vite + Tailwind 4 (Vitest + Testing Library)
 ├── e2e/          Playwright + firebase-tools (Firestore + Auth emulators)
-├── fixtures/     sample-news.json, sample-price-drop.json (save_feed_item inputs, shared by all tests)
+├── fixtures/     sample-news.json, sample-research.json, sample-price-drop.json, sample-invalid-ui.json (save_feed_item inputs, shared by all tests)
 ├── scripts/      check-node-pins.sh (from owlet), vendor-aui-css.mjs, seed-local.mjs
-├── firebase.json, .firebaserc (placeholder project id until the owner creates one), firestore.rules, firestore.indexes.json
+├── firebase.json, .firebaserc (`demo-pigeon` until the deploy task sets the real ID), firestore.rules, firestore.indexes.json
 └── .github/workflows/  ci.yml, backend.yml, frontend.yml, firestore-rules.yml
 ```
 
@@ -303,18 +315,19 @@ pigeon/
 
 ## 13. Deploy (needs the owner's GCP actions)
 
-The owner creates and approves these. Nothing gets created by the build.
+This copies owlet and hamster (both read 2026-11-15, read-only): one GCP/Firebase project per app, region `asia-northeast1`, Workload Identity Federation for every deploy, no static keys, and secrets in Secret Manager. **The owner runs every command; the build creates nothing.** The exact commands go in the README (plan Task 22), with `<PROJECT_ID>`, `<PROJECT_NUMBER>` and `<BILLING_ACCOUNT_ID>` as placeholders.
 
-1. A new Firebase/GCP project (suggested ID `pigeon-<suffix>`, region `asia-northeast1`) with billing linked. Blaze is needed for Cloud Run and Secret Manager.
-2. Enable these APIs: Cloud Run, Artifact Registry, Secret Manager, Firestore, Firebase Hosting, and IAM Credentials. Cloud Build isn't needed, because the image is built in Actions.
-3. A Firestore database in Native mode, `asia-northeast1`.
-4. Firebase Auth with the Google provider on. Add `<project>.web.app` to the authorized domains (it's added by default).
-5. An Artifact Registry Docker repo named `pigeon` in `asia-northeast1`.
-6. Secret Manager secrets `ALLOWED_EMAILS` and `pigeon-mcp-token` (value from `openssl rand -hex 32`), both readable by the Cloud Run runtime service account (`roles/secretmanager.secretAccessor`).
-7. GitHub OIDC deploys: a Workload Identity pool and provider limited to `repository == "hokita/pigeon"`, and a deploy service account with `roles/run.admin`, `roles/artifactregistry.writer`, `roles/iam.serviceAccountUser` (on the runtime SA), `roles/firebasehosting.admin`, `roles/datastore.indexAdmin` and `roles/firebaserules.admin`. Repo secrets `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT`, and repo variables `GCP_PROJECT_ID`, `BACKEND_URL` and `MCP_TOKEN_SECRET`. The project ID is public anyway once the site is live, but keeping it in variables means the workflows contain no project-specific values.
-8. The Firebase web config (`apiKey`, `authDomain`, `projectId`) goes in repo variables for the frontend build. It's public by design, but it doesn't need to be in the source.
+1. **Project and billing (owner):** `gcloud projects create pigeon-<6 hex>` (the same shape as `owlet-c659da` and `hamster-52b093`), `firebase projects:addfirebase <PROJECT_ID>`, and `gcloud billing projects link <PROJECT_ID> --billing-account=<BILLING_ACCOUNT_ID>`.
+2. **APIs:** `run`, `artifactregistry`, `firestore`, `secretmanager`, `iamcredentials`, `firebasehosting`, `identitytoolkit`. No Cloud Build: the image is built in Actions.
+3. **Firestore:** `gcloud firestore databases create --location=asia-northeast1`.
+4. **Artifact Registry:** Docker repo `pigeon` in `asia-northeast1`, with owlet's cleanup policy (keep the 2 most recent, delete the rest).
+5. **Auth:** register a Firebase web app (its config is public, like owlet's). Turn on the Google sign-in provider in the console; `<PROJECT_ID>.web.app` is an authorized domain by default.
+6. **Secrets:** `ALLOWED_EMAILS` (the owner's email, entered by the owner, never committed) and `pigeon-mcp-token` (`openssl rand -hex 32`). The Cloud Run runtime service account (the default compute SA) gets `roles/secretmanager.secretAccessor` on both, and `roles/datastore.user` on the project.
+7. **WIF (owlet's setup):** pool `github-pool`, provider `github-provider` with the condition `assertion.repository == 'hokita/pigeon' && assertion.ref == 'refs/heads/main'`, and service account `github-actions-deploy` with `roles/run.admin`, `roles/artifactregistry.writer`, `roles/firebasehosting.admin`, `roles/serviceusage.serviceUsageViewer`, `roles/firebaserules.admin` and `roles/datastore.indexAdmin`. `roles/iam.serviceAccountUser` goes on the runtime service account only. GitHub repo secrets `WIF_PROVIDER` and `WIF_SERVICE_ACCOUNT` (`gh secret set`).
+8. **Budget:** a ¥100 alert on the billing account, scoped to the project, as owlet has.
+9. **MCP token switch (owlet's pattern):** `backend.yml` adds `PIGEON_MCP_TOKEN=${PIGEON_MCP_TOKEN_SECRET}:latest` to `--set-secrets` only when the repo variable `PIGEON_MCP_TOKEN_SECRET` is set. Deploys work before the secret exists, with `/mcp` off (the matcher is off when unset, §9).
 
-The workflows mirror owlet's: deploy on `main` pushes filtered by path, lint, test and build before deploying, `--max-instances 2`, `--min-instances 0`.
+**Workflows** are owlet's four files with `owlet` → `pigeon`. As in owlet, the project ID, the Cloud Run URL and the Firebase web config are written in the workflow files (they're public by design; owlet and hamster, both public repos, do the same), and only the WIF values are secrets. Order, as in hamster: the deploy task starts only when the owner gives the project ID. The backend is deployed once to get its URL, then `frontend.yml` is written with the real URL. No placeholder is ever committed. Cloud Run: `pigeon-backend`, `--allow-unauthenticated` (the app's own auth is the gate), `--min-instances 0`, `--max-instances 2`. `firebase-tools@15.22.1` as in owlet.
 
 ## 14. Changes from the spec
 
@@ -323,6 +336,9 @@ The workflows mirror owlet's: deploy on `main` pushes filtered by path, lint, te
 3. **Tree format:** the official `$type`/`_type` wire format and official component names instead of the spec's illustrative `{type: "column"}`. The spec says to design the schema around the chosen renderer.
 4. `schemaVersion` is the integer `1` (`"1.0"` accepted).
 5. A second, read-only tool, `get_ui_guide`.
+6. **Item types are open-ended** (owner, 2026-11-15): a slug Muse picks, with the feed filter built from what exists, instead of a fixed news/product pair.
+7. **Price history is a small optional extension** (owner, 2026-11-15): any item may list products, identity is a `productKey` or a generic canonical URL with no per-shop rules, and prices are JPY only.
+8. **Retention:** items are kept forever. There's no deletion job (owner, 2026-11-15).
 
 ## 15. Decisions left to the builder
 
@@ -330,8 +346,10 @@ Tailwind class choices and visual polish within §8; error message wording beyon
 
 ## 16. Open questions (only the owner can answer)
 
-1. **If Muse scheduled tasks can't call custom tools:** is saving only from chats you start enough for pigeon to be worth it, or would you rather pause the project? (Bearer auth itself is verified, so the earlier OAuth question is gone.)
-2. **Which shops** do the price-watch tasks cover? The canonical-URL rules special-case Amazon only. Other shops with session or affiliate parameters in product URLs would need a rule each, or their history splits.
-3. **Currency:** is everything JPY? Mixed currencies for the same product would break a single history line. The plan draws one line per currency.
-4. **GCP project:** the project ID or name you want, and whether you'll create it or want exact `gcloud` commands to run yourself (the README will list them either way).
-5. **Retention:** keep everything forever (the MVP default), or prune old news after N months?
+None open. Answered on 2026-11-15:
+
+- **Chat vs scheduled tasks:** the owner will use both. Whether a scheduled task can call custom tools doesn't block building; Phase 4 (plan Task 25) checks it, with no owlet pre-test.
+- **Shops:** any shop, with no per-shop rules (§7.2).
+- **Currency:** JPY only.
+- **GCP:** the owner creates the project and billing and runs the setup commands; everything else follows owlet (§13).
+- **Retention:** keep items forever.
