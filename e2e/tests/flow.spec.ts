@@ -160,8 +160,38 @@ test('no horizontal scroll at 375px', async ({ page }) => {
     url: 'https://example.com/' + 'averyveryverylongpathsegment'.repeat(8),
   })
   const research = await saveItem(wide, { dedupeKey: `research:narrow-${RUN}` })
+  const longUrl = 'https://example.com/' + 'unbrokenpathsegment'.repeat(10)
+  const columns = Array.from({ length: 12 }, (_, i) => ({ label: `Column heading ${i + 1}` }))
+  const tree = fixture('sample-news')
+  tree.products = [
+    {
+      name: 'A-product-name-without-any-spaces-'.repeat(4),
+      url: 'https://shop.example.com/p/1',
+      price: 1000,
+      observedAt: '2026-11-15T09:00:00+09:00',
+    },
+  ]
+  tree.ui = {
+    schemaVersion: 1,
+    root: {
+      _type: 'Col',
+      children: [
+        { _type: 'Header', text: 'Header' + 'x'.repeat(150) },
+        { _type: 'Text', value: `See ${longUrl}` },
+        { _type: 'Table', columns, rows: [columns.map((c) => `${c.label} value`)] },
+        { _type: 'Citation', title: longUrl, url: longUrl },
+        { _type: 'Alert', title: "Muse's take", description: longUrl },
+        { _type: 'Fact', label: 'Link', value: longUrl },
+      ],
+    },
+  }
+  const wideTree = await saveItem(tree, {
+    dedupeKey: `news:wide-tree-${RUN}`,
+    title: `Wide ${RUN}`,
+  })
+  expect(wideTree.uiStatus).toBe('valid')
   await signIn(page)
-  for (const saved of [news, price, research]) {
+  for (const saved of [news, price, research, wideTree]) {
     await openItem(page, saved.url)
     const width = await page.evaluate(() => document.documentElement.scrollWidth)
     expect(width, saved.url).toBeLessThanOrEqual(375)

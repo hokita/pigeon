@@ -73,6 +73,19 @@
   box-sizing: border-box;
 }
 
+/* Long words and URLs inside generated parts wrap instead of widening the page;
+   flex children may shrink below their content width. Table cells keep their
+   width so a wide table scrolls inside its own container. */
+[data-aui] {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-aui='table'] th,
+[data-aui='table'] td {
+  overflow-wrap: normal;
+}
+
 body {
   margin: 0;
   background: var(--background);

@@ -34,7 +34,7 @@ const lib = official as GenerativeUILibrary
 const cardShape = (lib.Card.properties as unknown as z.ZodObject).shape
 
 const officialTypes = ALLOWED_TYPES.filter(
-  (t) => t !== 'Card' && t !== 'Image' && t !== 'Markdown' && t !== 'PriceHistory'
+  (t) => t !== 'Card' && t !== 'Image' && t !== 'Markdown' && t !== 'PriceHistory' && t !== 'Table'
 )
 
 export const pigeonLibrary: GenerativeUILibrary = {
@@ -45,6 +45,13 @@ export const pigeonLibrary: GenerativeUILibrary = {
     properties: z.strictObject({ title: cardShape.title, padding: cardShape.padding }),
     render: ({ title, padding, children, $status }) =>
       lib.Card.render({ title, padding, children, $status } as never),
+  } as GenerativeUILibrary[string],
+  // Wide tables scroll inside their own container, never the page (design §8).
+  Table: {
+    ...lib.Table,
+    render: (props) => (
+      <div className="overflow-x-auto max-w-full">{lib.Table.render(props as never)}</div>
+    ),
   } as GenerativeUILibrary[string],
   Image: {
     ...lib.Image,

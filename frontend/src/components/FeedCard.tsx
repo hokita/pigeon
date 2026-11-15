@@ -40,7 +40,7 @@ export function FeedCard({
         <h2 className="mt-2 mb-1 text-base font-semibold break-words">{item.title}</h2>
         <p className="m-0 text-sm text-muted-foreground line-clamp-3 break-words">{item.summary}</p>
         {product && (
-          <p className="mt-2 mb-0 text-sm">
+          <p className="mt-2 mb-0 text-sm [overflow-wrap:anywhere]">
             {product.name} · {formatPrice(product.price)}
             {product.change && product.change.percent !== 0 && (
               <span

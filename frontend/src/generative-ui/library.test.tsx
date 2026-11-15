@@ -64,6 +64,11 @@ describe('pigeonLibrary', () => {
     ).toContain('noopener')
   })
 
+  it('wraps official tables in their own horizontal scroll container', () => {
+    const { container } = show({ $type: 'Table', columns: [{ label: 'a' }], rows: [['1']] })
+    expect(container.querySelector('div.overflow-x-auto > [data-aui="table"]')).not.toBeNull()
+  })
+
   it('Card drops background', () => {
     const { container } = show({ $type: 'Card', title: 'T', background: 'red', children: 'x' })
     expect(container.innerHTML).not.toContain('red')
