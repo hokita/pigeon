@@ -201,6 +201,8 @@ gcloud run deploy pigeon-backend --region asia-northeast1 --project <PROJECT_ID>
   --set-secrets "ALLOWED_EMAILS=ALLOWED_EMAILS:latest"
 ```
 
+The deploy PR then sets that URL as `VITE_API_URL` in `frontend.yml`, and **in the same PR adds the backend origin (for example `https://pigeon-backend-…-an.a.run.app`, exactly, with no `*.run.app` wildcard) to `connect-src` in `firebase.json`**. Without it, the hosting CSP blocks every API call. `frontend/src/csp.test.ts` fails CI if a workflow's `VITE_API_URL` origin is missing from `connect-src`. The same PR removes the local development hosts from `connect-src`.
+
 ### MCP token (after the first deploy)
 
 ```sh
