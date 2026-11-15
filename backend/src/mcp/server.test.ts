@@ -116,6 +116,33 @@ describe('pigeon MCP server', () => {
     expect(vi.mocked(saveFeedItem).mock.calls[0][1].status).toBe('invalid')
   })
 
+  it('save_feed_item with a malformed ui envelope saves the item with uiStatus invalid', async () => {
+    const result = await save({
+      ...loadFixture('sample-news'),
+      ui: { schemaVersion: 2, root: 'x' },
+    })
+    expect(result.isError).toBeFalsy()
+    const body = JSON.parse(textOf(result))
+    expect(body.status).toBe('created')
+    expect(body.uiStatus).toBe('invalid')
+    expect(body.uiIssues.length).toBeGreaterThan(0)
+    expect(vi.mocked(saveFeedItem).mock.calls[0][1].status).toBe('invalid')
+  })
+
+  it('save_feed_item publishes ui without a schema the SDK would enforce, but still describes it', async () => {
+    const { tools } = await (await connect()).listTools()
+    const ui = (
+      tools.find((t) => t.name === 'save_feed_item')!.inputSchema.properties as Record<
+        string,
+        { type?: unknown; properties?: unknown; description?: string }
+      >
+    ).ui
+    expect(ui.type).toBeUndefined()
+    expect(ui.properties).toBeUndefined()
+    expect(ui.description).toMatch(/schemaVersion/)
+    expect(ui.description).toMatch(/get_ui_guide/)
+  })
+
   it('save_feed_item with invalid fields is a tool error', async () => {
     // Schema errors come from the SDK's own validation of the published schema.
     const result = await save({ ...loadFixture('sample-news'), type: 'Not A Slug' })

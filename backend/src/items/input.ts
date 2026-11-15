@@ -97,17 +97,17 @@ export const saveFeedItemShape = {
     .max(20)
     .optional()
     .describe('Optional products with the price seen now. pigeon builds price history from these.'),
+  // Published without a schema the SDK would enforce: validateUiTree checks the
+  // tree, so a malformed one still saves the item with uiStatus 'invalid' (design §6.4).
   ui: z
-    .object({
-      schemaVersion: z.union([z.literal(1), z.literal('1.0')]).describe('Always 1.'),
-      root: z.record(z.string(), z.unknown()).describe('One component node; see get_ui_guide.'),
-    })
+    .unknown()
     .optional()
-    .describe('How to show the item: a component tree (call get_ui_guide first). Optional.'),
+    .describe(
+      'How to show the item: { "schemaVersion": 1, "root": <one component node> }. Call get_ui_guide first for the components and limits. Optional; a tree that breaks the rules is reported back as uiIssues and the item is still saved.'
+    ),
 }
 
-// The ui is validated by validateUiTree, so a bad tree never rejects the item (design §6.4).
-const inputSchema = z.strictObject({ ...saveFeedItemShape, ui: z.unknown().optional() })
+const inputSchema = z.strictObject(saveFeedItemShape)
 
 type RawInput = z.infer<typeof inputSchema>
 
