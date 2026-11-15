@@ -1,0 +1,69 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+
+const mockAuth = vi.hoisted(() => ({
+  currentUser: { getIdToken: vi.fn().mockResolvedValue('fake-token') } as {
+    getIdToken: () => Promise<string>
+  } | null,
+}))
+vi.mock('./firebase', () => ({ auth: mockAuth }))
+
+import { api } from './api'
+
+const mockFetch = vi.fn()
+vi.stubGlobal('fetch', mockFetch)
+const signedInUser = mockAuth.currentUser
+
+beforeEach(() => {
+  mockFetch.mockReset()
+  mockAuth.currentUser = signedInUser
+  vi.stubEnv('VITE_API_URL', 'http://api.test')
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
+
+const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body })
+
+describe('api', () => {
+  it('listItems sends the bearer token and type', async () => {
+    mockFetch.mockResolvedValue(ok({ items: [], nextCursor: null }))
+    const result = await api.listItems({ type: 'news', cursor: 'c1' })
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://api.test/api/items?type=news&cursor=c1',
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: 'Bearer fake-token' }),
+      })
+    )
+    expect(result).toEqual({ items: [], nextCursor: null })
+  })
+
+  it('listItems without filters calls /api/items', async () => {
+    mockFetch.mockResolvedValue(ok({ items: [], nextCursor: null }))
+    await api.listItems({})
+    expect(mockFetch.mock.calls[0][0]).toBe('http://api.test/api/items')
+  })
+
+  it('listTypes returns the types array', async () => {
+    mockFetch.mockResolvedValue(ok({ types: [{ type: 'news', count: 1, lastItemAt: 'x' }] }))
+    expect(await api.listTypes()).toEqual([{ type: 'news', count: 1, lastItemAt: 'x' }])
+    expect(mockFetch.mock.calls[0][0]).toBe('http://api.test/api/types')
+  })
+
+  it('getItem returns null on 404', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 404 })
+    expect(await api.getItem('i_0123456789abcdef0123')).toBeNull()
+  })
+
+  it('throws on 500', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 500 })
+    await expect(api.getItem('i_0123456789abcdef0123')).rejects.toThrow('API error: 500')
+    await expect(api.listItems({})).rejects.toThrow('API error: 500')
+  })
+
+  it('throws without calling fetch when signed out', async () => {
+    mockAuth.currentUser = null
+    await expect(api.listItems({})).rejects.toThrow('Not signed in')
+    expect(mockFetch).not.toHaveBeenCalled()
+  })
+})
