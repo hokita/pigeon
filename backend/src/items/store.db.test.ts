@@ -203,7 +203,7 @@ describe('saveFeedItem', () => {
   })
 
   it('unstable identity splits history without failing', async () => {
-    const strip = (raw: Record<string, any>) => {
+    const strip = (raw: ReturnType<typeof loadFixture>) => {
       raw.ui.root.children = raw.ui.root.children.filter(
         (c: { _type: string }) => c._type !== 'PriceHistory'
       )
