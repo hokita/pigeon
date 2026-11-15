@@ -1,0 +1,37 @@
+{
+  "type": "news",
+  "title": "A news item with a broken layout",
+  "summary": "This item's UI tree uses a component pigeon doesn't allow and an unsafe image URL, so pigeon shows the saved content instead.",
+  "dedupeKey": "news:invalid-ui:2026-11-15",
+  "content": {
+    "markdown": "## Saved content\n\nThe layout Muse sent for this item couldn't be used, so pigeon shows this write-up instead.\n\n<script>alert('x')</script>",
+    "sources": [
+      {
+        "title": "Example source",
+        "url": "https://news.example.org/broken-layout",
+        "publisher": "Example News"
+      }
+    ]
+  },
+  "ui": {
+    "schemaVersion": 1,
+    "root": {
+      "_type": "Col",
+      "children": [
+        {
+          "_type": "Header",
+          "text": "Broken layout"
+        },
+        {
+          "_type": "Button",
+          "label": "Click me"
+        },
+        {
+          "_type": "Image",
+          "src": "javascript:alert(1)",
+          "alt": "bad"
+        }
+      ]
+    }
+  }
+}

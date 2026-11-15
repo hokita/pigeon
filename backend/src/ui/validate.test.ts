@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { validateUiTree } from './validate.js'
 import { ALLOWED_TYPES, uiGuideSchema } from './library.js'
+import { loadFixture } from '../testing/fixtures.js'
 
 const fullTree = {
   _type: 'Col',
@@ -42,7 +43,14 @@ function issuesOf(input: unknown) {
 }
 
 describe('validateUiTree', () => {
-  it('accepts the news, research and price-drop fixture ui', () => {
+  it.each(['sample-news', 'sample-research', 'sample-price-drop'] as const)(
+    'accepts the %s fixture ui',
+    (name) => {
+      expect(validateUiTree(loadFixture(name).ui)).toMatchObject({ ok: true })
+    }
+  )
+
+  it('accepts every allowed component', () => {
     expect(validateUiTree(ui(fullTree)).ok).toBe(true)
   })
 
