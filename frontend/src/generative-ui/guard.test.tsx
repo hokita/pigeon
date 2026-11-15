@@ -26,6 +26,17 @@ describe('guardTree', () => {
     expect(res).toEqual({ tree: { $type: 'Unsupported' }, replaced: 1 })
   })
 
+  it.each(['toString', 'constructor', '__proto__', 'hasOwnProperty'])(
+    'replaces a prototype-named type %s instead of throwing',
+    (type) => {
+      const res = guardTree(
+        { $type: 'Col', children: [{ $type: type }, { $type: 'Text', value: 'x' }] },
+        pigeonLibrary
+      )!
+      expect(res.replaced).toBe(1)
+    }
+  )
+
   it('replaces a node with an unknown prop', () => {
     expect(guardTree({ $type: 'Card', background: 'red' }, pigeonLibrary)!.replaced).toBe(1)
   })

@@ -93,4 +93,29 @@ describe('ItemRenderer', () => {
     render(<ItemRenderer response={r} library={library} />)
     expect(screen.getByText('Still here')).toBeInTheDocument()
   })
+
+  it('a stored node named toString does not blank the page', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const r = response('sample-news')
+    r.item.ui = {
+      schemaVersion: 1,
+      root: { $type: 'Col', children: [{ $type: 'Header', text: 'Kept' }, { $type: 'toString' }] },
+    }
+    render(<ItemRenderer response={r} />)
+    expect(screen.getByText('Kept')).toBeInTheDocument()
+  })
+
+  it('an error while preparing the tree falls back to the saved Markdown', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const fail = () => {
+      throw new Error('broken library')
+    }
+    const library = new Proxy({} as typeof renderLibrary, {
+      get: fail,
+      getOwnPropertyDescriptor: fail,
+      has: fail,
+    })
+    render(<ItemRenderer response={response('sample-news')} library={library} />)
+    expect(document.querySelector('[data-aui="markdown"]')?.textContent).toContain('Lumen-7')
+  })
 })

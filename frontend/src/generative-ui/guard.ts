@@ -44,7 +44,11 @@ export function guardTree(
       return { $type: 'Unsupported' }
     }
     const type = typeOf(node)
-    const entry = typeof type === 'string' ? library[type] : undefined
+    // Own entries only: a stored type such as "toString" must not reach Object.prototype.
+    const entry =
+      typeof type === 'string' && Object.prototype.hasOwnProperty.call(library, type)
+        ? library[type]
+        : undefined
     const children = node.children
     const props = Object.fromEntries(
       Object.entries(node).filter(([k]) => k !== '$type' && k !== '_type' && k !== 'children')

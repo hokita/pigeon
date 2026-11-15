@@ -9,27 +9,35 @@ import { RenderBoundary } from './RenderBoundary'
 
 export const FALLBACK_NOTE = "Showing the saved content; the layout Muse sent couldn't be used."
 
-export default function ItemRenderer({
-  response,
-  library = renderLibrary,
-}: {
-  response: ItemResponse
-  library?: GenerativeUILibrary
-}) {
-  const { item, priceHistories } = response
+type Props = { response: ItemResponse; library?: GenerativeUILibrary }
+
+// Migrate → guard → render. Runs inside RenderBoundary, so anything that throws
+// here shows the saved Markdown instead of blanking the page.
+function Tree({ response, library = renderLibrary }: Props) {
+  const { item } = response
   const migrated = migrateUi(item.ui)
   const guarded = migrated ? guardTree(migrated.root, library) : null
   const usedFallback = guarded === null
   const tree = guarded?.tree ?? guardTree(fallbackTree(item), library)?.tree
   return (
-    <PriceHistoryContext value={{ products: item.products, priceHistories }}>
+    <>
       {(usedFallback || item.uiStatus !== 'valid') && (
         <p role="status" className="text-sm text-muted-foreground mb-4">
           {FALLBACK_NOTE}
         </p>
       )}
-      <RenderBoundary markdown={item.content.markdown}>
-        {renderGenerativeUI(tree, library, { status: 'done' })}
+      {renderGenerativeUI(tree, library, { status: 'done' })}
+    </>
+  )
+}
+
+export default function ItemRenderer({ response, library }: Props) {
+  return (
+    <PriceHistoryContext
+      value={{ products: response.item.products, priceHistories: response.priceHistories }}
+    >
+      <RenderBoundary markdown={response.item.content.markdown}>
+        <Tree response={response} library={library} />
       </RenderBoundary>
     </PriceHistoryContext>
   )
