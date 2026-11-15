@@ -150,7 +150,7 @@ Everything else, including `Box`, `Button`, form controls, `Diagram`, `Map`, `Ic
 
 - **On save (backend, authoritative):** the item fields are validated strictly. If they're invalid, the tool returns an error and nothing is saved. Then `validateUiTree(ui)` runs. If the tree is invalid, **the item is still saved** with `ui: null` and `uiStatus: "invalid"`, and the tool result lists up to 20 issues (`path`, `message`) so Muse can fix the tree and save again with the same `dedupeKey`. The rejected tree isn't stored, so untrusted data stays out of storage and the doc stays small.
 - **On render (frontend, defensive):** `guardTree(root, library)` walks the stored tree again. It applies the same limits and safe-parses each node's props with that library entry's `properties` schema. A bad node becomes a small "Couldn't show this part" notice, and the rest renders. A top-level React error boundary around the renderer catches anything left.
-- **When `ui` is null or invalid**, the detail page renders `fallbackTree(item)`, built in code from the item's content: a `Header` and a `Markdown` summary, a `PriceHistory` per product, and a `Citation` per source. Content is never lost.
+- **When `ui` is null or invalid**, the detail page renders `fallbackTree(item)`, built in code from the item's content: a `Header` and a `Markdown` summary, and a `PriceHistory` per product. Sources aren't repeated in it, because the page frame always lists them (§8). Content is never lost.
 - **Migration:** `migrateUi(ui)` on read maps older `schemaVersion`s to the current one. v1 is the only version, so it's the identity plus a version check, and an unknown version goes to the fallback.
 
 ### 6.5 Content vs presentation
@@ -166,7 +166,7 @@ The item's `content` (Markdown summary, sources, products with observed prices) 
 | `type` | string slug `[a-z][a-z0-9-]{0,31}` | Muse's choice, e.g. `news`, `research`, `price-watch`. Not an enum. |
 | `title`, `summary` | string | |
 | `content` | `{ markdown: string, sources: {title, url, publisher?, publishedAt?}[] }` | Muse's write-up. Labelled "Written by Muse" in the UI. |
-| `products` | `{ productId, productKey?, name, url, canonicalUrl, price, listPrice?, imageUrl?, retailer?, observedAt }[]` | optional on any type; `[]` when absent. Prices are integer JPY. |
+| `products` | `{ productId, productKey?, name, url, canonicalUrl, price, listPrice?, imageUrl?, retailer?, observedAt, change? }[]` (`change` set at save time, §7.2) | optional on any type; `[]` when absent. Prices are integer JPY. |
 | `ui` | `{ schemaVersion: 1, root }` or `null` | |
 | `uiStatus` | `"valid" \| "invalid" \| "missing"` | |
 | `uiSchemaVersion` | number or `null` | |
@@ -176,7 +176,9 @@ The item's `content` (Markdown summary, sources, products with observed prices) 
 | `createdAt`, `updatedAt` | Timestamp | server time. `createdAt` doesn't change on update. |
 | `origin` | `"mcp"` | for future sources |
 
-**itemId** = `i_` + first 20 hex chars of sha256(`dedupeKey`). **dedupeKey** is Muse's optional input (`[A-Za-z0-9:._/-]{1,200}`, e.g. `news:daily-ai:2026-11-15`). If missing, it defaults to `` `${type}:${normalizedTitle}:${jstDate(publishedAt ?? now)}` ``. Saving the same key again either updates the item (`status: "updated"`, `createdAt` kept) or, if `contentHash` matches, writes nothing (`status: "unchanged"`). The whole save runs in one Firestore transaction.
+**itemId** = `i_` + first 20 hex chars of sha256(`dedupeKey`). **dedupeKey** is Muse's optional input (`[A-Za-z0-9:._/-]{1,200}`, e.g. `news:daily-ai:2026-11-15`). If missing, it defaults to `` `${type}:${normalizedTitle}:${jstDate(publishedAt ?? now)}` ``. Saving the same key again either replaces the item (`status: "updated"`, `createdAt` kept) or, if `contentHash` matches, writes nothing (`status: "unchanged"`). The whole save runs in one Firestore transaction.
+
+**Re-save replaces the item fully** (orchestrator call, 2026-11-15). Every field comes from the new input. If the new `ui` is invalid or missing, `ui` becomes `null` and the page shows the fallback built from the *new* content. The old tree is never kept, because it could show outdated text. Observations: this item's observation docs for products no longer in the item are deleted, and the rest are upserted. Each touched product's `lastPrice`, `lastObservedAt` and `firstObservedAt` are recomputed from its observations inside the transaction. A product with no observations left is deleted.
 
 **`types/{type}`**: `{ type, count, lastItemAt }`, updated in the same transaction (count +1 on create; if an update changes an item's type, −1 on the old one and +1 on the new one; a type at 0 is deleted). The feed's filter reads this, so new types appear in the filter without code changes.
 
@@ -198,8 +200,8 @@ Any item may list `products`. Nothing else in pigeon depends on them. There's no
   4. Sort the remaining parameters and drop a trailing `/` (except on the root path).
 - **If identity isn't stable** (a shop puts session IDs in its URLs, or Muse changes the `productKey`), the history splits into two products. Nothing breaks: each one has fewer points, and the item still renders. The Muse prompt (Phase 4) asks for a `productKey` when the page shows a stable product code. That's the fix, not per-shop rules.
 - **One observation per (product, item)**, keyed by `itemId`. Resubmitting the same item overwrites its observation instead of adding a new one, so retries never invent history. `observedAt` = the product's `observedAt` from Muse, defaulting to the server's time. Must not be in the future (5 minutes of clock skew allowed).
-- **Only observations are history.** `listPrice` (a "was" price shown on the retailer page) is stored and shown as a page fact, never as a history point. The detail API computes `change` against the previous observation (`price − previous.price`, and the percentage). That number comes from pigeon's own records.
-- `PriceHistory {product}` matches an entry of the same item by `productKey`, then by `url`, then by `canonicalUrl(product)`. The save validates that it matches (otherwise the tree is invalid, §6.4). The detail API returns `priceHistories: { [productId]: {observedAt, price}[] }` (newest 365, oldest first), and the component renders the official `Chart` (`variant: "line"`, `showAxis: true`) from that. A single observation shows as a `Fact`, "First observation <date>", not as a one-point line.
+- **Only observations are history.** `listPrice` (a "was" price shown on the retailer page) is stored and shown as a page fact, never as a history point. **`change` is computed once, in the save transaction,** and stored on the item's `products[]` entry: this item's observation against the observation immediately before it (by `observedAt`) for that product, `{ amount: price − previous.price, percent }` rounded to 1 decimal, or absent when there's none. The feed and detail page read it from the item, so there are no per-card queries. That number comes from pigeon's own records. **Known limit:** if a later save inserts an observation between two existing ones (e.g. a back-dated `observedAt`), older items keep their stored `change`; recomputing them is out of scope.
+- `PriceHistory {product}` matches an entry of the same item by `productKey`, then by `url`, then by `canonicalUrl(product)`. The save validates that it matches (otherwise the tree is invalid, §6.4). The detail API returns `priceHistories: { [productId]: {observedAt, price}[] }`, **up to and including this item's own observation** (`observedAt <=` this item's `observedAt` for that product), the newest 365 of those, oldest first. So an old item shows the history as it was when it was saved, not later prices. and the component renders the official `Chart` (`variant: "line"`, `showAxis: true`) from that. A single observation shows as a `Fact`, "First observation <date>", not as a one-point line.
 
 ### 7.3 Indexes and rules
 
@@ -210,13 +212,17 @@ Any item may list `products`. Nothing else in pigeon depends on them. There's no
 
 ```
 DetailPage ── api.getItem(id) ──► { item, priceHistories }
-   └─ <ItemRenderer item priceHistories>
+   ├─ frame top: title, "Written by Muse" · type · date      [custom, always shown]
+   ├─ <ItemRenderer item priceHistories>                     (the body)
         ├─ migrateUi(item.ui) ─ null? ──► fallbackTree(item)
         ├─ guardTree(root, pigeonLibrary)       [custom]
         └─ <RenderBoundary>                       [custom: React error boundary]
              <PriceHistoryContext value>          [custom]
                renderGenerativeUI(root, pigeonLibrary, { status: "done" })   [official]
+   └─ frame footer: "Sources" — content.sources (title, publisher, link)  [custom, always shown]
 ```
+
+**Page frame** (orchestrator call, 2026-11-15): outside the tree, the detail page always shows a top line with the title, a `Written by Muse` label, the type and the date (`publishedAt`, else `createdAt`), and a `Sources` footer listing every `content.sources` entry (title, publisher if any, safe link). The tree is only the body. Trees don't need `Citation` nodes; Muse may still use them inline.
 
 - **Official:** `renderGenerativeUI` and `defaultGenerativeUILibrary` (for `Header`, `Text`, `Caption`, `Image`, `Divider`, `Table`, `Chart`, `Timeline`, `Steps`, `Card`, `Row`, `Col`, `Tabs`, `Alert`, `Citation`, `Fact`, `Badge`), the per-element error boundaries, unknown-type dropping, `Citation` link filtering and `Image` `no-referrer`. Styling comes from the official `generative-ui-style` registry CSS, vendored into `frontend/src/generative-ui/aui.css` with its source URL and sha256 (`e4dfc7c6…44dd` as fetched 2026-11-15) in a header comment. pigeon defines the shadcn theme tokens it reads for light and dark in `index.css`.
 - **Custom:** `pigeonLibrary`, which picks the allowlisted entries and overrides `Card` to drop the removed props; `Markdown`, the official registry's react-markdown + remark-gfm component with pigeon's link and image handling plus `prose dark:prose-invert`; `PriceHistory`; `Unsupported`, the guard's placeholder; `guardTree`; `fallbackTree`; `RenderBoundary`; `migrateUi`. No `imageOrigins` allowlist, because news images come from arbitrary sites. `https` is enforced on save and again in the guard instead.
@@ -265,6 +271,7 @@ DetailPage ── api.getItem(id) ──► { item, priceHistories }
   2. `get_ui_guide`, annotated `{ readOnlyHint: true }`, no input. It returns the v1 guide as text: the allowed components with their descriptions (the official descriptions plus pigeon's notes), the limits, the JSON Schema for one node from `buildPresentParameters(pigeonLibrary)`, the sample trees, and the item types that already exist (from `types`, so Muse reuses `news` instead of inventing `daily-news`). Muse can read the rules when a task starts instead of carrying them all in its prompt.
 
 - **Server `instructions`** (sent at initialize): a short paragraph telling the client to call `get_ui_guide` before building a tree, to use only real URLs, and never to put historical prices in a `Chart`.
+- **Facts vs analysis:** the guide (and the Phase 4 prompts) tell Muse to keep what the sources say and its own analysis in separate blocks, with analysis in an `Alert` titled `Muse's take` (tone `info`). Sources don't need to be repeated as `Citation`s, since the page lists them.
 
 ## 10. REST API (web app)
 
@@ -338,7 +345,8 @@ This copies owlet and hamster (both read 2026-11-15, read-only): one GCP/Firebas
 5. A second, read-only tool, `get_ui_guide`.
 6. **Item types are open-ended** (owner, 2026-11-15): a slug Muse picks, with the feed filter built from what exists, instead of a fixed news/product pair.
 7. **Price history is a small optional extension** (owner, 2026-11-15): any item may list products, identity is a `productKey` or a generic canonical URL with no per-shop rules, and prices are JPY only.
-8. **Retention:** items are kept forever. There's no deletion job (owner, 2026-11-15).
+8. **Builder-review calls** (orchestrator, 2026-11-15): the fixed page frame (§8), price history as of the item's own observation with `change` stored at save time (§7.2), and full replacement on re-save (§7.1).
+9. **Retention:** items are kept forever. There's no deletion job (owner, 2026-11-15).
 
 ## 15. Decisions left to the builder
 
