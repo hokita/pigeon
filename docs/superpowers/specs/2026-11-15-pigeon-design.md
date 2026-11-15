@@ -16,13 +16,13 @@ Muse picks the layout while it collects. It sends the content and a JSON compone
 - Firestore storage of the item, its sources, its UI tree and its schema version, plus a price history for each product built only from real observations.
 - A REST API and a React app with two pages: a feed (newest first, news/product filter, mobile first) and a detail page that renders the stored tree with assistant-ui's generative UI renderer. The detail page supports dark mode.
 - The whole flow is tested locally with no Muse involved: sample JSON → MCP tool → backend → Firestore emulator → REST API → React renderer, covered by Playwright.
-- Phase 4 adds the Muse connection, the prompt and the instructions, and runs only after the owlet Muse test passes.
+- Phase 4 adds the Muse connection, the prompt and the instructions, and runs after the deploy. Bearer auth was confirmed by the owlet Muse test (2026-11-15).
 
 **Non-goals (MVP)**
 
 - No chat UI, no LLM calls from pigeon, no regenerating UIs.
 - No editing or deleting from the web app, and no `delete_feed_item` tool. Updating means saving again with the same `dedupeKey`.
-- No OAuth for MCP (see §9 and the open questions), no multi-user support, no image proxy, no full-text search.
+- No OAuth for MCP: Muse sends a static Bearer header, verified by a real test (§4.3). Also no multi-user support, no image proxy, no full-text search.
 - No price-drop alerts from pigeon. Muse still does the notifying.
 
 **Anti-goals** (failures even if everything technically works)
@@ -78,11 +78,12 @@ Checked against the published tarball (`npm pack`, read `src/` and `dist/*.d.ts`
 
 owlet's `feat/mcp-server` branch (`backend/src/mcp/server.ts`) uses `@modelcontextprotocol/server` 2.4.0, `@modelcontextprotocol/node` 2.1.2 (`toNodeHandler`) and the streamable HTTP transport in stateless mode through `createMcpHandler(factory)`. Its tests use `@modelcontextprotocol/client` 2.4.0 against an in-process Express app. As of today these are the npm `latest` versions. pigeon copies this pattern as is: a factory per request, `server.server.onerror` plus handler `onerror` logging only `err.message`, and tool errors returned as `isError: true` results.
 
-### 4.3 Muse remote MCP: mostly unverified
+### 4.3 Muse remote MCP: auth verified, scheduled tasks unverified
 
 - **Verified (Meta pages exist):** the Muse Help Center has articles on connectors (<https://www.meta.com/help/artificial-intelligence/1687253048996149/>) and on reminders and scheduled tasks (<https://www.meta.com/help/artificial-intelligence/1484325780075655/>). Scheduled tasks run on a schedule. Meta's Connect recap (<https://developers.meta.com/blog/meta-connect-recap/>) says Meta AI Connectors can connect a service "through an API or MCP server". The help pages render client-side, and I couldn't read their full text with my tools.
-- **Not verified from Meta:** whether the consumer Muse app accepts a custom remote MCP URL, whether it sends a static `Authorization: Bearer` header or needs OAuth, whether scheduled tasks can call custom connector tools unattended, and any payload, timeout or tool-count limits. Third-party guides disagree: bearer header ([pallyy](https://pallyy.com/docs/api/mcp/meta-muse), [crosswalk](https://crosswalk.to/agents/muse/custom-connector), [tokenrip](https://tokenrip.com/blog/meta-muse-custom-connector)), OAuth ([anythingmcp](https://anythingmcp.com/guides/clients/muse), [arcade](https://www.arcade.dev/blog/connect-meta-muse-mcp-gateway/)), and "not documented in the consumer app" ([aiagentslibrary](https://www.aiagentslibrary.com/blog/meta-muse-mcp/), [twitterapi.io](https://twitterapi.io/blog/muse-connectors)).
-- **Plan:** Phase 4 waits on the owlet Muse test, which is checking exactly the header and scheduled-task questions right now. Nothing in Phases 1–3 depends on Muse.
+- **Verified by a real test (2026-11-15, owlet):** the owner connected Muse to owlet's remote MCP server with an `Authorization: Bearer <token>` header, and Muse called owlet's custom tools successfully. So Muse accepts a custom remote MCP URL, sends a static Bearer header, and calls custom tools from a chat. pigeon uses the same auth (§9). No OAuth is needed.
+- **Still unverified:** whether Muse **scheduled tasks** can call custom MCP tools without the owner present, and any payload, timeout or tool-count limits. pigeon's limits (§6.3) are its own; a lower Muse limit would show up in Phase 4. Before the owlet test, third-party guides disagreed on auth: bearer header ([pallyy](https://pallyy.com/docs/api/mcp/meta-muse), [crosswalk](https://crosswalk.to/agents/muse/custom-connector), [tokenrip](https://tokenrip.com/blog/meta-muse-custom-connector)), OAuth ([anythingmcp](https://anythingmcp.com/guides/clients/muse), [arcade](https://www.arcade.dev/blog/connect-meta-muse-mcp-gateway/)), and "not documented in the consumer app" ([aiagentslibrary](https://www.aiagentslibrary.com/blog/meta-muse-mcp/), [twitterapi.io](https://twitterapi.io/blog/muse-connectors)).
+- **Plan:** nothing in Phases 1–3 depends on Muse. Phase 4 is no longer blocked on auth; it needs only the deployed backend (Task 22). The scheduled-task question is answered in Phase 4 itself (plan Task 25): if scheduled tasks can't call custom tools, pigeon still works, but items are saved only from chats the owner starts, and the docs say so (§16 Q1).
 
 ### 4.4 Markdown and charts
 
@@ -318,7 +319,7 @@ The workflows mirror owlet's: deploy on `main` pushes filtered by path, lint, te
 ## 14. Changes from the spec
 
 1. **Approval gate:** the spec says to implement without stopping at a proposal. Instead, this plan stops for approval, and then the build runs straight through (orchestrator, approved by the owner).
-2. **Order:** the whole flow is built and tested locally first. Muse (Phase 4) comes after the owlet Muse test.
+2. **Order:** the whole flow is built and tested locally first. Muse (Phase 4) comes after the deploy. The owlet Muse test (2026-11-15) already confirmed Bearer auth; whether scheduled tasks can call custom tools is checked in Phase 4.
 3. **Tree format:** the official `$type`/`_type` wire format and official component names instead of the spec's illustrative `{type: "column"}`. The spec says to design the schema around the chosen renderer.
 4. `schemaVersion` is the integer `1` (`"1.0"` accepted).
 5. A second, read-only tool, `get_ui_guide`.
@@ -329,7 +330,7 @@ Tailwind class choices and visual polish within §8; error message wording beyon
 
 ## 16. Open questions (only the owner can answer)
 
-1. **Muse auth fallback:** if the owlet test shows Muse can't send a static Bearer header (OAuth only), should pigeon add OAuth 2.1 (a bigger piece of work: an authorization server or a hosted IdP plus PKCE and dynamic client registration), or stop and wait?
+1. **If Muse scheduled tasks can't call custom tools:** is saving only from chats you start enough for pigeon to be worth it, or would you rather pause the project? (Bearer auth itself is verified, so the earlier OAuth question is gone.)
 2. **Which shops** do the price-watch tasks cover? The canonical-URL rules special-case Amazon only. Other shops with session or affiliate parameters in product URLs would need a rule each, or their history splits.
 3. **Currency:** is everything JPY? Mixed currencies for the same product would break a single history line. The plan draws one line per currency.
 4. **GCP project:** the project ID or name you want, and whether you'll create it or want exact `gcloud` commands to run yourself (the README will list them either way).
