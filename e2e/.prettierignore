@@ -2,3 +2,5 @@ node_modules/
 dist/
 *.lock
 frontend/src/generative-ui/aui.css
+test-results/
+playwright-report/
