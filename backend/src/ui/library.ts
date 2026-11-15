@@ -4,6 +4,7 @@ import {
   defaultGenerativeUILibrary as official,
   type GenerativeUILibrary,
 } from '@assistant-ui/generative-ui/react'
+import { checkImageUrl, checkLinkUrl } from '../urls.js'
 
 // Schema v1 allowlist (design §6.2). Everything else, including interactive
 // components and Box/Diagram/Map, is rejected.
@@ -51,6 +52,14 @@ const maxItems =
     }
   }
 
+const url =
+  (key: string, check: (value: string) => string | null): Check =>
+  (props, ctx) => {
+    const v = props[key]
+    const message = typeof v === 'string' ? check(v) : null
+    if (message) ctx.addIssue({ code: 'custom', path: [key], message })
+  }
+
 const tableShape: Check = (props, ctx) => {
   const columns = props.columns
   const rows = props.rows
@@ -88,26 +97,21 @@ const chartSize: Check = (props, ctx) => {
   }
 }
 
-// pigeon's tighter rules on top of the official schemas (design §6.2). Extra
-// checks (such as URL safety) are appended by addChecks.
+// pigeon's tighter rules on top of the official schemas (design §6.2).
 const tighter: Record<string, Check[]> = {
   Tabs: [maxItems('tabs', 8)],
   Header: [maxString('text', 200)],
   Text: [maxString('value', 2000)],
   Caption: [maxString('value', 2000)],
   Markdown: [maxString('value', 20_000)],
-  Image: [maxString('alt', 300)],
+  Image: [maxString('alt', 300), url('src', checkImageUrl)],
   Table: [maxItems('columns', 12), maxItems('rows', 200), tableShape],
   Chart: [chartSize],
   Timeline: [maxItems('items', 50)],
   Steps: [maxItems('steps', 30)],
   Alert: [maxString('description', 2000)],
-  Citation: [maxString('snippet', 500)],
+  Citation: [maxString('snippet', 500), url('url', checkLinkUrl)],
   Badge: [maxString('value', 40)],
-}
-
-export function addChecks(type: string, ...checks: Check[]): void {
-  ;(tighter[type] ??= []).push(...checks)
 }
 
 const officialEntries = official as GenerativeUILibrary

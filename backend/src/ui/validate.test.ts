@@ -76,8 +76,7 @@ describe('validateUiTree', () => {
     expect(issues.map((i) => i.path)).toContain('root.background')
   })
 
-  it.skip('rejects a non-https image', () => {
-    // enabled in Task 4
+  it('rejects a non-https image', () => {
     for (const src of [
       'http://a.example/x.png',
       'javascript:alert(1)',
@@ -89,8 +88,7 @@ describe('validateUiTree', () => {
     }
   })
 
-  it.skip('rejects a javascript: citation url', () => {
-    // enabled in Task 4
+  it('rejects a javascript: citation url', () => {
     expect(
       issuesOf(ui({ _type: 'Citation', title: 't', url: 'javascript:alert(1)' })).map((i) => i.path)
     ).toContain('root.url')
