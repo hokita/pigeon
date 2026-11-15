@@ -13,7 +13,8 @@
     "test:db": "firebase emulators:exec --project demo-pigeon-test --only firestore \"vitest run --config vitest.db.config.ts\"",
     "lint": "eslint src",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "seed": "node ../scripts/seed-local.mjs"
   },
   "volta": {
     "node": "24.22.3"
