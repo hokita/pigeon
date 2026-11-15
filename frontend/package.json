@@ -18,9 +18,14 @@
     "node": "24.22.3"
   },
   "dependencies": {
+    "@assistant-ui/generative-ui": "0.0.11",
+    "@assistant-ui/react": "0.15.36",
     "firebase": "13.3.0",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "react-markdown": "10.1.0",
+    "remark-gfm": "4.0.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
