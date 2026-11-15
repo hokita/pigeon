@@ -80,7 +80,7 @@
 - Consumes: `defaultGenerativeUILibrary`, `buildPresentParameters` from `@assistant-ui/generative-ui/react`.
 - Produces:
   - `UI_LIMITS = { maxBytes: 200_000, maxNodes: 400, maxDepth: 12, maxImages: 30, maxUrlLength: 2048 } as const` (limits.ts)
-  - `ALLOWED_TYPES: readonly string[]`, the 18 names in design §6.2, `PriceHistory` included (library.ts)
+  - `ALLOWED_TYPES: readonly string[]`, the 19 names in design §6.2, `PriceHistory` included (library.ts)
   - `propSchemas: Record<string, z.ZodType>`. For official types, the official `properties` schema, `.strict()`, with pigeon's tighter rules from §6.2 applied through `.superRefine` (string lengths, array caps, the `Table` row/column match, URL checks via Task 4's `checkLinkUrl`/`checkImageUrl`). `Card` uses `z.strictObject({ title, padding })` copied from the official shape. `PriceHistory` is `z.strictObject({ product: z.string().min(1).max(2048), title: z.string().max(200).optional() })`. `product` is the `productKey` or `url` of an entry in the item's `products`; Task 5 checks the match, because the tree alone can't.
   - `validateUiTree(input: unknown): { ok: true; ui: StoredUi } | { ok: false; issues: UiIssue[] }`, where `StoredUi = { schemaVersion: 1; root: UiNode }`, `UiIssue = { path: string; message: string }` (path like `root.children[2].rows`), and `UiNode = { $type: string; [prop: string]: unknown; children?: UiNode | UiNode[] | string | number }`. Normalizes `_type` to `$type`, accepts `schemaVersion` `1` or `"1.0"`, and caps issues at 20.
   - `uiGuideSchema(): JSONSchema7`, which is `buildPresentParameters` on the allowlisted library.
