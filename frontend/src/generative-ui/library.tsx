@@ -5,6 +5,7 @@ import {
 } from '@assistant-ui/generative-ui/react'
 import { Markdown } from './Markdown'
 import { safeImageUrl } from './safeUrl'
+import { PriceHistory } from './PriceHistory'
 
 // Schema v1 allowlist (design §6.2), the same list as backend/src/ui/library.ts.
 export const ALLOWED_TYPES = [
@@ -59,10 +60,14 @@ export const pigeonLibrary: GenerativeUILibrary = {
     streamProperties: false,
     render: ({ value }: { value: string }) => <Markdown value={value} />,
   } as GenerativeUILibrary[string],
-  // Replaced by the real component in Task 16.
   PriceHistory: {
-    description: 'Price history drawn from recorded observations.',
-    properties: z.strictObject({ product: z.string(), title: z.string().optional() }),
-    render: () => null,
-  },
+    description: "A line chart of one product's price history, drawn from recorded observations.",
+    properties: z.strictObject({
+      product: z.string().min(1).max(2048),
+      title: z.string().max(200).optional(),
+    }),
+    render: ({ product, title }: { product: string; title?: string }) => (
+      <PriceHistory product={product} title={title} />
+    ),
+  } as GenerativeUILibrary[string],
 }

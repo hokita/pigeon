@@ -1,0 +1,96 @@
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { z } from 'zod'
+import ItemRenderer from './ItemRenderer'
+import { renderLibrary } from '../generative-ui/renderLibrary'
+import { loadFixture } from '../testing/fixtures'
+import type { FeedItemDetail, ItemResponse } from '../types'
+
+const NOTE = "Showing the saved content; the layout Muse sent couldn't be used."
+
+function response(fixture: string, overrides: Partial<FeedItemDetail> = {}): ItemResponse {
+  const raw = loadFixture(fixture)
+  return {
+    item: {
+      id: 'i_0123456789abcdef0123',
+      type: raw.type,
+      title: raw.title,
+      summary: raw.summary,
+      createdAt: '2026-11-15T00:00:00.000Z',
+      updatedAt: '2026-11-15T00:00:00.000Z',
+      publishedAt: null,
+      content: raw.content,
+      ui: raw.ui,
+      uiStatus: 'valid',
+      products: [],
+      ...overrides,
+    },
+    priceHistories: {},
+  }
+}
+
+describe('ItemRenderer', () => {
+  it('ItemRenderer renders the news fixture', () => {
+    const { container } = render(<ItemRenderer response={response('sample-news')} />)
+    for (const sel of [
+      '[data-aui="markdown"]',
+      '[data-aui="table"]',
+      '[data-aui="timeline"]',
+      'svg[data-aui="chart"]',
+    ]) {
+      expect(container.querySelector(sel)).not.toBeNull()
+    }
+    expect(screen.queryByText(NOTE)).toBeNull()
+  })
+
+  it('ItemRenderer uses the fallback when ui is null', () => {
+    const { container } = render(
+      <ItemRenderer response={response('sample-invalid-ui', { ui: null, uiStatus: 'invalid' })} />
+    )
+    expect(screen.getByText(NOTE)).toBeInTheDocument()
+    expect(container.querySelector('[data-aui="markdown"]')?.textContent).toContain('Saved content')
+    expect(container.querySelector('[data-aui="citation"]')).toBeNull()
+  })
+
+  it('uses the fallback for an unknown schema version', () => {
+    render(
+      <ItemRenderer response={response('sample-news', { ui: { schemaVersion: 9, root: {} } })} />
+    )
+    expect(screen.getByText(NOTE)).toBeInTheDocument()
+  })
+
+  it('replaces a bad stored node with a notice', () => {
+    const r = response('sample-news')
+    r.item.ui = {
+      schemaVersion: 1,
+      root: { $type: 'Col', children: [{ $type: 'Header', text: 'Kept' }, { $type: 'Button' }] },
+    }
+    render(<ItemRenderer response={r} />)
+    expect(screen.getByText('Kept')).toBeInTheDocument()
+    expect(screen.getByRole('note')).toHaveTextContent("Couldn't show this part.")
+  })
+
+  it('ItemRenderer survives a component that throws', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const library = {
+      ...renderLibrary,
+      Boom: {
+        description: 'throws',
+        properties: z.object({}),
+        render: () => {
+          throw new Error('boom')
+        },
+      },
+    }
+    const r = response('sample-news')
+    r.item.ui = {
+      schemaVersion: 1,
+      root: {
+        $type: 'Col',
+        children: [{ $type: 'Header', text: 'Still here' }, { $type: 'Boom' }],
+      },
+    }
+    render(<ItemRenderer response={r} library={library} />)
+    expect(screen.getByText('Still here')).toBeInTheDocument()
+  })
+})
