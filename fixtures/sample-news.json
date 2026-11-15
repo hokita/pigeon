@@ -1,0 +1,170 @@
+{
+  "type": "news",
+  "title": "Small models close the gap: three new releases this week",
+  "summary": "Northwind's Lumen-7, Bluefin's Kestrel Mini and Harbor's Orbit-S all landed this week. Lumen-7 is the standout on reasoning benchmarks; all three numbers are self-reported so far.",
+  "publishedAt": "2026-11-15T00:00:00+09:00",
+  "dedupeKey": "news:daily-ai:2026-11-15",
+  "content": {
+    "markdown": "## What happened\n\nThree labs released new small language models this week, and the gap between small and large models kept shrinking. The most notable release, **Lumen-7**, scores within a few points of last year's frontier models on common reasoning benchmarks while running on a single consumer GPU.[^1]\n\n## The releases\n\n- **Lumen-7** (Northwind Labs): 7B parameters, open weights under a permissive licence, 128k context. The lab says it was trained mostly on synthetic data checked by a larger model.[^1]\n- **Kestrel Mini** (Bluefin AI): 3B parameters, aimed at phones. It runs fully offline and supports 12 languages, including Japanese.[^2]\n- **Orbit-S** (Harbor Research): 12B parameters, tuned for coding. Early users report it handles multi-file edits well but struggles with long test suites.[^3]\n\n## Benchmarks at a glance\n\nThe labs' own numbers are summarised in the table below. Independent results are still coming in, and self-reported scores tend to be optimistic, so treat them as a rough guide rather than a ranking.\n\n## What to watch\n\n- Whether independent evaluations confirm the reported scores over the next two weeks.\n- Licence details: Lumen-7's licence allows commercial use, while Orbit-S restricts it for companies above a revenue threshold.\n- On-device performance: Kestrel Mini's claims about battery use have not been tested by anyone outside the company yet.\n\n[^1]: Northwind Labs announcement.\n[^2]: Bluefin AI blog.\n[^3]: Harbor Research release notes.\n",
+    "sources": [
+      {
+        "title": "Introducing Lumen-7",
+        "url": "https://northwind.example.com/blog/lumen-7",
+        "publisher": "Northwind Labs",
+        "publishedAt": "2026-11-13"
+      },
+      {
+        "title": "Kestrel Mini: a 3B model for phones",
+        "url": "https://bluefin.example.org/posts/kestrel-mini",
+        "publisher": "Bluefin AI",
+        "publishedAt": "2026-11-14"
+      },
+      {
+        "title": "Orbit-S release notes",
+        "url": "https://harbor.example.net/releases/orbit-s",
+        "publisher": "Harbor Research",
+        "publishedAt": "2026-11-14"
+      }
+    ]
+  },
+  "ui": {
+    "schemaVersion": 1,
+    "root": {
+      "_type": "Col",
+      "gap": 4,
+      "children": [
+        {
+          "_type": "Header",
+          "text": "Small models close the gap",
+          "size": "xl"
+        },
+        {
+          "_type": "Markdown",
+          "value": "Three labs released small language models this week. **Lumen-7** is the standout: it scores close to last year's frontier models while running on one consumer GPU.\n\nAll numbers below are **self-reported** by the labs."
+        },
+        {
+          "_type": "Image",
+          "src": "https://images.example.com/ai-chip.jpg",
+          "alt": "A close-up of an AI accelerator chip on a circuit board"
+        },
+        {
+          "_type": "Table",
+          "columns": [
+            {
+              "label": "Model"
+            },
+            {
+              "label": "Lab"
+            },
+            {
+              "label": "Params (B)",
+              "align": "end"
+            },
+            {
+              "label": "Reasoning score",
+              "align": "end"
+            }
+          ],
+          "rows": [
+            [
+              "Lumen-7",
+              "Northwind Labs",
+              7,
+              71.2
+            ],
+            [
+              "Kestrel Mini",
+              "Bluefin AI",
+              3,
+              58.4
+            ],
+            [
+              "Orbit-S",
+              "Harbor Research",
+              12,
+              66.9
+            ],
+            [
+              "Lumen-6 (last year)",
+              "Northwind Labs",
+              7,
+              60.1
+            ],
+            [
+              "Frontier model (2025)",
+              "various",
+              400,
+              74.5
+            ]
+          ]
+        },
+        {
+          "_type": "Chart",
+          "variant": "bar",
+          "showAxis": true,
+          "data": [
+            {
+              "label": "Lumen-7",
+              "value": 71.2
+            },
+            {
+              "label": "Kestrel",
+              "value": 58.4
+            },
+            {
+              "label": "Orbit-S",
+              "value": 66.9
+            },
+            {
+              "label": "Lumen-6",
+              "value": 60.1
+            },
+            {
+              "label": "2025 frontier",
+              "value": 74.5
+            }
+          ]
+        },
+        {
+          "_type": "Timeline",
+          "items": [
+            {
+              "time": "Nov 13",
+              "title": "Lumen-7 announced",
+              "detail": "Open weights published the same day."
+            },
+            {
+              "time": "Nov 14 am",
+              "title": "Kestrel Mini released",
+              "detail": "Phone builds for two platforms."
+            },
+            {
+              "time": "Nov 14 pm",
+              "title": "Orbit-S release notes",
+              "detail": "Coding-focused 12B model."
+            },
+            {
+              "time": "Nov 15",
+              "title": "First community benchmarks",
+              "detail": "Early results broadly match Lumen-7's claims."
+            },
+            {
+              "time": "Next week",
+              "title": "Independent evaluations",
+              "detail": "Two benchmark groups plan to publish results."
+            }
+          ]
+        },
+        {
+          "_type": "Divider"
+        },
+        {
+          "_type": "Alert",
+          "tone": "info",
+          "title": "Muse's take",
+          "description": "If the independent numbers hold, a 7B open model is now good enough for most everyday tasks you'd use a chatbot for. Worth trying Lumen-7 locally before paying for a bigger model."
+        }
+      ]
+    }
+  }
+}

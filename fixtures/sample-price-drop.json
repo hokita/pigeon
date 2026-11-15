@@ -1,0 +1,144 @@
+{
+  "type": "price-watch",
+  "title": "Price drop: WH-2000 headphones down to ¥32,800",
+  "summary": "The WH-2000 noise-cancelling headphones dropped to ¥32,800 at Shop Example (list ¥39,600). The EAR-7 earbuds are unchanged at ¥14,980.",
+  "dedupeKey": "price-watch:headphones:2026-11-15",
+  "content": {
+    "markdown": "The **WH-2000** is now **¥32,800** at Shop Example, below its list price of ¥39,600. The **EAR-7** earbuds are ¥14,980.\n\nPrices were read from the product pages at the time of this check.",
+    "sources": [
+      {
+        "title": "WH-2000 Wireless Headphones",
+        "url": "https://www.shop.example.com/p/wh-2000",
+        "publisher": "Shop Example"
+      },
+      {
+        "title": "EAR-7 Earbuds",
+        "url": "https://shop.example.net/item/ear-7",
+        "publisher": "Example Net Store"
+      }
+    ]
+  },
+  "products": [
+    {
+      "name": "WH-2000 Wireless Headphones",
+      "url": "https://www.shop.example.com/p/wh-2000?utm_source=muse",
+      "productKey": "sku:wh-2000",
+      "price": 32800,
+      "listPrice": 39600,
+      "imageUrl": "https://images.example.com/wh-2000.jpg",
+      "retailer": "Shop Example",
+      "observedAt": "2026-11-15T09:00:00+09:00"
+    },
+    {
+      "name": "EAR-7 Earbuds",
+      "url": "https://shop.example.net/item/ear-7?ref=feed",
+      "price": 14980,
+      "retailer": "Example Net Store",
+      "observedAt": "2026-11-15T09:00:00+09:00"
+    }
+  ],
+  "ui": {
+    "schemaVersion": 1,
+    "root": {
+      "_type": "Col",
+      "gap": 4,
+      "children": [
+        {
+          "_type": "Header",
+          "text": "WH-2000 down to ¥32,800",
+          "size": "xl"
+        },
+        {
+          "_type": "Row",
+          "gap": 4,
+          "align": "center",
+          "children": [
+            {
+              "_type": "Image",
+              "src": "https://images.example.com/wh-2000.jpg",
+              "alt": "WH-2000 headphones in black",
+              "size": "md"
+            },
+            {
+              "_type": "Col",
+              "gap": 2,
+              "children": [
+                {
+                  "_type": "Fact",
+                  "label": "Now",
+                  "value": "¥32,800"
+                },
+                {
+                  "_type": "Fact",
+                  "label": "List price",
+                  "value": "¥39,600",
+                  "delta": "-17.2%",
+                  "trend": "down",
+                  "upIsGood": false
+                },
+                {
+                  "_type": "Badge",
+                  "value": "Price drop",
+                  "variant": "success"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "_type": "PriceHistory",
+          "product": "sku:wh-2000",
+          "title": "WH-2000"
+        },
+        {
+          "_type": "PriceHistory",
+          "product": "https://shop.example.net/item/ear-7?ref=feed",
+          "title": "EAR-7"
+        },
+        {
+          "_type": "Table",
+          "columns": [
+            {
+              "label": "Product"
+            },
+            {
+              "label": "Price",
+              "align": "end"
+            },
+            {
+              "label": "Shop"
+            }
+          ],
+          "rows": [
+            [
+              "WH-2000",
+              "¥32,800",
+              "Shop Example"
+            ],
+            [
+              "EAR-7",
+              "¥14,980",
+              "Example Net Store"
+            ]
+          ]
+        },
+        {
+          "_type": "Markdown",
+          "value": "The WH-2000 is at its lowest price seen so far. The EAR-7 hasn't moved."
+        },
+        {
+          "_type": "Citation",
+          "title": "WH-2000 Wireless Headphones",
+          "url": "https://www.shop.example.com/p/wh-2000",
+          "source": "Shop Example"
+        },
+        {
+          "_type": "Citation",
+          "title": "EAR-7 Earbuds",
+          "url": "https://shop.example.net/item/ear-7",
+          "source": "Example Net Store"
+        }
+      ]
+    }
+  }
+}

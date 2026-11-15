@@ -1,0 +1,56 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "frontend/dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**",
+        "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self' https://apis.google.com; img-src 'self' https: data:; style-src 'self' 'unsafe-inline'; connect-src 'self' http://localhost:8180 http://localhost:8190 http://127.0.0.1:9199 https://*.googleapis.com; frame-src https://*.firebaseapp.com; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+          },
+          {
+            "key": "Referrer-Policy",
+            "value": "no-referrer"
+          },
+          {
+            "key": "X-Content-Type-Options",
+            "value": "nosniff"
+          }
+        ]
+      }
+    ]
+  },
+  "emulators": {
+    "auth": {
+      "port": 9199
+    },
+    "firestore": {
+      "port": 8181,
+      "websocketPort": 9160
+    },
+    "hub": {
+      "port": 4410
+    },
+    "logging": {
+      "port": 4510
+    },
+    "ui": {
+      "enabled": false
+    },
+    "hosting": {
+      "port": 5010
+    }
+  }
+}

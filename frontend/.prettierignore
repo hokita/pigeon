@@ -1,0 +1,4 @@
+node_modules/
+dist/
+*.lock
+src/generative-ui/aui.css

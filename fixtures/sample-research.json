@@ -1,0 +1,148 @@
+{
+  "type": "research",
+  "title": "Heat pumps for a small apartment: what are the options?",
+  "summary": "Compared three kinds of heat pump for a 40 m² apartment. A ductless mini-split is the best fit; window units are cheaper but louder and less efficient.",
+  "dedupeKey": "research:heat-pumps:2026-11-15",
+  "content": {
+    "markdown": "## Short answer\n\nFor a 40 m² apartment, a **single-zone ductless mini-split** is the best fit: efficient, quiet, and it heats and cools. A window heat pump costs less up front but is louder and loses efficiency below about 0 °C.\n\n## Why\n\nMini-splits keep the noisy compressor outside. Window units put everything in one box in the window, which is simpler to install but noisier inside. Portable units are the least efficient because their exhaust hose leaks warm air.\n\n## Before you buy\n\nCheck whether your building allows outdoor units, and whether there's a subsidy in your area.",
+    "sources": [
+      {
+        "title": "Choosing a heat pump for small spaces",
+        "url": "https://energy.example.org/guides/small-space-heat-pumps",
+        "publisher": "Energy Guide"
+      },
+      {
+        "title": "Mini-split vs window unit: a field test",
+        "url": "https://homelab.example.com/tests/mini-split-vs-window",
+        "publisher": "Home Lab"
+      },
+      {
+        "title": "Portable heat pumps: why efficiency suffers",
+        "url": "https://hvac.example.net/articles/portable-efficiency",
+        "publisher": "HVAC Notes"
+      },
+      {
+        "title": "Apartment rules for outdoor units",
+        "url": "https://tenants.example.org/faq/outdoor-units",
+        "publisher": "Tenants' Association"
+      }
+    ]
+  },
+  "ui": {
+    "schemaVersion": 1,
+    "root": {
+      "_type": "Col",
+      "gap": 4,
+      "children": [
+        {
+          "_type": "Header",
+          "text": "Heat pumps for a 40 m² apartment",
+          "size": "xl"
+        },
+        {
+          "_type": "Markdown",
+          "value": "**Best fit:** a single-zone ductless mini-split. Window units are cheaper but louder; portable units are the least efficient."
+        },
+        {
+          "_type": "Tabs",
+          "label": "Research sections",
+          "tabs": [
+            "Summary",
+            "Options",
+            "Sources"
+          ],
+          "children": [
+            {
+              "_type": "Markdown",
+              "value": "Mini-splits keep the compressor outside, so they're quiet indoors and efficient down to well below freezing.\n\n- Check building rules for outdoor units\n- Look for local subsidies"
+            },
+            {
+              "_type": "Table",
+              "columns": [
+                {
+                  "label": "Type"
+                },
+                {
+                  "label": "Upfront cost"
+                },
+                {
+                  "label": "Noise inside"
+                },
+                {
+                  "label": "Efficiency"
+                }
+              ],
+              "rows": [
+                [
+                  "Ductless mini-split",
+                  "High",
+                  "Low",
+                  "High"
+                ],
+                [
+                  "Window heat pump",
+                  "Medium",
+                  "Medium",
+                  "Medium"
+                ],
+                [
+                  "Portable unit",
+                  "Low",
+                  "High",
+                  "Low"
+                ]
+              ]
+            },
+            {
+              "_type": "Col",
+              "gap": 2,
+              "children": [
+                {
+                  "_type": "Citation",
+                  "title": "Choosing a heat pump for small spaces",
+                  "url": "https://energy.example.org/guides/small-space-heat-pumps",
+                  "source": "Energy Guide"
+                },
+                {
+                  "_type": "Citation",
+                  "title": "Mini-split vs window unit: a field test",
+                  "url": "https://homelab.example.com/tests/mini-split-vs-window",
+                  "source": "Home Lab"
+                },
+                {
+                  "_type": "Citation",
+                  "title": "Portable heat pumps: why efficiency suffers",
+                  "url": "https://hvac.example.net/articles/portable-efficiency",
+                  "source": "HVAC Notes"
+                },
+                {
+                  "_type": "Citation",
+                  "title": "Apartment rules for outdoor units",
+                  "url": "https://tenants.example.org/faq/outdoor-units",
+                  "source": "Tenants' Association"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "_type": "Steps",
+          "steps": [
+            {
+              "title": "Ask the building manager",
+              "detail": "Confirm outdoor units are allowed and where."
+            },
+            {
+              "title": "Check subsidies",
+              "detail": "Many areas refund part of the cost."
+            },
+            {
+              "title": "Get two installer quotes",
+              "detail": "Ask for the unit's rated efficiency at -7 °C."
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

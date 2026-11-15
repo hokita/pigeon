@@ -1,0 +1,23 @@
+{
+  "name": "pigeon-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:servers-stopped": "node scripts/assert-servers-stopped.mjs",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report"
+  },
+  "volta": {
+    "node": "24.22.3"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@playwright/test": "1.65.1",
+    "@types/node": "24.19.2",
+    "firebase-tools": "15.36.0",
+    "prettier": "3.10.1",
+    "typescript": "5.9.3"
+  }
+}
