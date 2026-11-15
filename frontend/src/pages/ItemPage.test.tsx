@@ -1,0 +1,129 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, within } from '@testing-library/react'
+import type { ItemResponse } from '../types'
+
+const { getItem } = vi.hoisted(() => ({ getItem: vi.fn() }))
+vi.mock('../api', () => ({ api: { getItem } }))
+
+import ItemPage from './ItemPage'
+
+const ID = 'i_0123456789abcdef0123'
+const navigate = vi.fn()
+
+function response(over: Partial<ItemResponse['item']> = {}): ItemResponse {
+  return {
+    item: {
+      id: ID,
+      type: 'research',
+      title: 'Heat pumps',
+      summary: 's',
+      createdAt: '2026-11-15T00:00:00.000Z',
+      updatedAt: '2026-11-15T00:00:00.000Z',
+      publishedAt: '2026-11-14T03:00:00.000Z',
+      content: {
+        markdown: 'Saved write-up',
+        sources: [
+          { title: 'Energy guide', url: 'https://energy.example.org/a', publisher: 'Energy Guide' },
+          { title: 'Field test', url: 'https://homelab.example.com/b' },
+        ],
+      },
+      ui: {
+        schemaVersion: 1,
+        root: { $type: 'Col', children: [{ $type: 'Header', text: 'Tree header' }] },
+      },
+      uiStatus: 'valid',
+      products: [],
+      ...over,
+    },
+    priceHistories: {},
+  }
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
+
+describe('ItemPage', () => {
+  it('renders the item via ItemRenderer', async () => {
+    getItem.mockResolvedValue(response())
+    render(<ItemPage id={ID} navigate={navigate} />)
+    expect(await screen.findByText('Tree header')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1, name: 'Heat pumps' })).toBeInTheDocument()
+    expect(document.title).toBe('Heat pumps · pigeon')
+    expect(getItem).toHaveBeenCalledWith(ID)
+  })
+
+  it('frame shows Written by Muse, the type and the date', async () => {
+    getItem.mockResolvedValue(response())
+    render(<ItemPage id={ID} navigate={navigate} />)
+    const meta = await screen.findByTestId('item-meta')
+    expect(meta).toHaveTextContent('Written by Muse')
+    expect(meta).toHaveTextContent('research')
+    expect(meta).toHaveTextContent('2026/11/14 12:00')
+  })
+
+  it('date falls back to createdAt without publishedAt', async () => {
+    getItem.mockResolvedValue(response({ publishedAt: null }))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    expect(await screen.findByTestId('item-meta')).toHaveTextContent('2026/11/15 09:00')
+  })
+
+  it('Sources footer lists every source with title, publisher and rel noopener', async () => {
+    getItem.mockResolvedValue(response())
+    render(<ItemPage id={ID} navigate={navigate} />)
+    const footer = await screen.findByRole('contentinfo')
+    expect(within(footer).getByRole('heading', { name: 'Sources' })).toBeInTheDocument()
+    const links = within(footer).getAllByRole('link')
+    expect(links).toHaveLength(2)
+    expect(links[0]).toHaveAttribute('href', 'https://energy.example.org/a')
+    expect(links[0]).toHaveAttribute('rel', 'noopener noreferrer nofollow')
+    expect(footer).toHaveTextContent('Energy Guide')
+  })
+
+  it('an unsafe source url is shown as text, not a link', async () => {
+    const r = response()
+    r.item.content.sources = [{ title: 'Bad', url: 'javascript:alert(1)' }]
+    getItem.mockResolvedValue(r)
+    render(<ItemPage id={ID} navigate={navigate} />)
+    const footer = await screen.findByRole('contentinfo')
+    expect(within(footer).queryByRole('link')).toBeNull()
+    expect(footer).toHaveTextContent('Bad')
+  })
+
+  it('frame and Sources show when ui is null', async () => {
+    getItem.mockResolvedValue(response({ ui: null, uiStatus: 'invalid' }))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    expect(await screen.findByTestId('item-meta')).toHaveTextContent('Written by Muse')
+    expect(within(screen.getByRole('contentinfo')).getAllByRole('link')).toHaveLength(2)
+    expect(screen.getByText('Saved write-up')).toBeInTheDocument()
+  })
+
+  it('a tree without Citations still shows sources', async () => {
+    getItem.mockResolvedValue(response())
+    const { container } = render(<ItemPage id={ID} navigate={navigate} />)
+    await screen.findByText('Tree header')
+    expect(container.querySelector('[data-aui="citation"]')).toBeNull()
+    expect(within(screen.getByRole('contentinfo')).getAllByRole('link')).toHaveLength(2)
+  })
+
+  it('404 message', async () => {
+    getItem.mockResolvedValue(null)
+    render(<ItemPage id={ID} navigate={navigate} />)
+    expect(await screen.findByText("This item doesn't exist.")).toBeInTheDocument()
+  })
+
+  it('error with retry', async () => {
+    getItem.mockRejectedValueOnce(new Error('x')).mockResolvedValueOnce(response())
+    render(<ItemPage id={ID} navigate={navigate} />)
+    expect(await screen.findByText("Couldn't load this item.")).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    expect(await screen.findByText('Tree header')).toBeInTheDocument()
+  })
+
+  it('back link navigates to the feed', async () => {
+    getItem.mockResolvedValue(response())
+    render(<ItemPage id={ID} navigate={navigate} />)
+    fireEvent.click(await screen.findByRole('link', { name: '← Feed' }))
+    expect(navigate).toHaveBeenCalledWith({ page: 'feed' })
+  })
+})
