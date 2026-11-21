@@ -20,8 +20,6 @@ function toolError(message: string): CallToolResult {
   return { ...text(message), isError: true }
 }
 
-// Each tool call takes from the limiter; protocol requests (initialize,
-// tools/list) never reach a tool and aren't counted.
 function limited<A>(
   limiter: RateLimiter,
   failure: string,
@@ -96,15 +94,10 @@ export function createPigeonMcpServer({
   return server
 }
 
-// The SDK answers rejected requests (406, 415, bad protocol version, ...) itself
-// and reports them through onerror; log only the message so a failing
-// connector leaves a reason in the logs.
 function logMcpError(err: Error) {
   console.error('MCP request failed:', err.message)
 }
 
-// Stateless: the SDK builds a fresh server per request. express.json() has
-// already read the body, so it's passed in rather than re-read from the stream.
 export function createMcpRequestHandler({
   limiter,
   frontendUrl,
@@ -114,7 +107,6 @@ export function createMcpRequestHandler({
 }): RequestHandler {
   const factory = () => {
     const server = createPigeonMcpServer({ limiter, frontendUrl })
-    // Transport-level rejections reach the server instance, not the handler.
     server.server.onerror = logMcpError
     return server
   }

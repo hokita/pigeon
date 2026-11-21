@@ -8,7 +8,6 @@ const MAX_LIMIT = 50
 
 type Handler = (req: Request, res: Response) => Promise<void>
 
-// Logs the error itself, never the request (its headers carry the ID token).
 function guarded(handler: Handler): RequestHandler {
   return async (req, res) => {
     try {

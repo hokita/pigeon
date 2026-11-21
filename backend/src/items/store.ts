@@ -19,7 +19,6 @@ type Observation = {
 
 const round1 = (n: number) => Math.round(n * 10) / 10
 
-// This item's observation against the one immediately before it (design §7.2).
 function changeFor(obs: Observation[], mine: Observation): PriceChange | undefined {
   let previous: Observation | undefined
   for (const o of obs) {
@@ -52,7 +51,6 @@ export async function saveFeedItem(
   const now = Timestamp.now()
 
   const status = await db.runTransaction(async (tx): Promise<SaveStatus> => {
-    // Firestore transactions need every read before the first write.
     const existingSnap = await tx.get(itemRef)
     const existing = existingSnap.data()
     if (existing && existing.contentHash === input.contentHash) return 'unchanged'
@@ -130,7 +128,6 @@ export async function saveFeedItem(
       })
     }
 
-    // Type counts: +1 on create; on a type change, −1 old (deleted at 0) and +1 new.
     const count = (t: string) => (typeSnaps.get(t)?.get('count') as number | undefined) ?? 0
     if (existing && existing.type !== input.type) {
       const left = count(existing.type) - 1
@@ -146,7 +143,6 @@ export async function saveFeedItem(
 
     const storedUi = ui.status === 'valid' ? ui.ui : null
     tx.set(itemRef, {
-      // Stored as JSON text: Firestore can't hold nested arrays (e.g. Table rows).
       uiJson: storedUi ? JSON.stringify(storedUi) : null,
       type: input.type,
       title: input.title,

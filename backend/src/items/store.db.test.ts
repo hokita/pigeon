@@ -18,7 +18,6 @@ async function save(raw: unknown) {
   return saveFeedItem(value, ui)
 }
 
-// A price item for one product, observed on the given day of November 2026.
 function priceItem(day: number, price: number, product: Record<string, unknown> = {}) {
   const raw = loadFixture('sample-price-drop')
   raw.dedupeKey = `price-watch:wh:2026-11-${String(day).padStart(2, '0')}`
@@ -38,7 +37,6 @@ function priceItem(day: number, price: number, product: Record<string, unknown> 
 }
 
 const pidOf = (raw: unknown) => parse(raw).value.products[0].productId
-// The stored doc, with uiJson parsed back into ui.
 const item = async (id: string) => {
   const data = (await db().doc(`items/${id}`).get()).data()!
   return { ...data, ui: data.uiJson === null ? null : JSON.parse(data.uiJson) }
@@ -139,7 +137,6 @@ describe('saveFeedItem', () => {
     const { id } = await save(day2)
     const pid = pidOf(day1)
     expect((await product(pid))!.lastPrice).toBe(32800)
-    // Re-save item 2 without the product.
     const without = {
       ...day2,
       products: [],
