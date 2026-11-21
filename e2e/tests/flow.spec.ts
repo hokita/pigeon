@@ -16,12 +16,9 @@ function priceItem(tag: string, day: number, price: number) {
       observedAt: `2026-11-${d}T09:00:00+09:00`,
     },
   ]
-  raw.ui.root.children = raw.ui.root.children.filter(
-    (c: { _type: string; product?: string }) =>
-      c._type !== 'PriceHistory' || c.product === 'sku:wh-2000'
-  )
-  raw.ui.root.children.find((c: { _type: string }) => c._type === 'PriceHistory').product =
-    `sku:${tag}-${RUN}`
+  raw.ui.root.children = raw.ui.root.children
+    .filter((c) => c._type !== 'PriceHistory' || c.product === 'sku:wh-2000')
+    .map((c) => (c._type === 'PriceHistory' ? { ...c, product: `sku:${tag}-${RUN}` } : c))
   return raw
 }
 
@@ -139,8 +136,10 @@ test('re-saving with a broken tree shows the new content, not the old tree', asy
   const next = fixture('sample-news')
   next.title = `Replaced ${RUN}`
   next.content.markdown = 'The replacement write-up.'
-  next.ui = { schemaVersion: 1, root: { _type: 'Button', label: 'x' } }
-  const second = await saveItem(next, { dedupeKey: key })
+  const second = await saveItem(
+    { ...next, ui: { schemaVersion: 1, root: { _type: 'Button', label: 'x' } } },
+    { dedupeKey: key }
+  )
   expect(second).toMatchObject({ id: first.id, status: 'updated', uiStatus: 'invalid' })
   await signIn(page)
   await openItem(page, second.url)
