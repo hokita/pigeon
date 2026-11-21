@@ -1,9 +1,4 @@
 #!/usr/bin/env node
-// Turns assistant-ui's official generative-ui style registry item (a shadcn
-// `registry:style` JSON) into plain CSS. It never fetches: download the JSON first.
-//
-//   curl -sL -o /tmp/generative-ui-style.json https://r.assistant-ui.com/generative-ui-style.json
-//   node scripts/vendor-aui-css.mjs /tmp/generative-ui-style.json frontend/src/generative-ui/aui.css
 import { createHash } from 'node:crypto'
 import { readFileSync, writeFileSync } from 'node:fs'
 
@@ -19,7 +14,6 @@ const item = JSON.parse(raw.toString('utf8'))
 const sha256 = createHash('sha256').update(raw).digest('hex')
 const today = new Date().toISOString().slice(0, 10)
 
-// A block's value is either declarations (string values) or nested rules (object values).
 function block(selector, body, indent) {
   const pad = '  '.repeat(indent)
   const lines = [`${pad}${selector} {`]
