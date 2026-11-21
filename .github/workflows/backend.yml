@@ -40,9 +40,17 @@ jobs:
         working-directory: backend
         run: npm ci
 
+      - name: Lint
+        working-directory: backend
+        run: npm run lint
+
       - name: Test
         working-directory: backend
         run: npm test
+
+      - name: Build
+        working-directory: backend
+        run: npm run build
 
       - uses: google-github-actions/auth@v3
         with:
