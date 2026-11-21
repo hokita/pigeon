@@ -101,8 +101,7 @@ describe('saveFeedItem', () => {
     const next = loadFixture('sample-news')
     next.title = 'New title'
     next.content.sources = next.content.sources.slice(0, 1)
-    next.ui = { schemaVersion: 1, root: { _type: 'Button' } }
-    await save(next)
+    await save({ ...next, ui: { schemaVersion: 1, root: { _type: 'Button' } } })
     const doc = await item(id)
     expect(doc).toMatchObject({
       title: 'New title',
@@ -111,9 +110,7 @@ describe('saveFeedItem', () => {
       uiSchemaVersion: null,
     })
     expect(doc.content.sources).toHaveLength(1)
-    delete next.ui
-    next.summary = 'again'
-    await save(next)
+    await save({ ...next, ui: undefined, summary: 'again' })
     expect(await item(id)).toMatchObject({ ui: null, uiStatus: 'missing' })
   })
 
@@ -143,8 +140,11 @@ describe('saveFeedItem', () => {
     const pid = pidOf(day1)
     expect((await product(pid))!.lastPrice).toBe(32800)
     // Re-save item 2 without the product.
-    const without = { ...day2, products: [] }
-    without.ui = { schemaVersion: 1, root: { _type: 'Text', value: 'gone' } }
+    const without = {
+      ...day2,
+      products: [],
+      ui: { schemaVersion: 1, root: { _type: 'Text', value: 'gone' } },
+    }
     await save(without)
     const p = (await product(pid))!
     expect(p.lastPrice).toBe(39600)

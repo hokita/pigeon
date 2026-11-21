@@ -57,8 +57,7 @@ describe('parseFeedItemInput', () => {
       products: loadFixture('sample-price-drop').products,
     }
     expect(parsed(research).value.products).toHaveLength(2)
-    const price = loadFixture('sample-price-drop')
-    delete price.products
+    const price = { ...loadFixture('sample-price-drop'), products: undefined }
     price.ui.root.children = price.ui.root.children.filter(
       (c: { _type: string }) => c._type !== 'PriceHistory'
     )
@@ -88,8 +87,7 @@ describe('parseFeedItemInput', () => {
   })
 
   it('missing ui is status missing', () => {
-    const raw = loadFixture('sample-news')
-    delete raw.ui
+    const raw = { ...loadFixture('sample-news'), ui: undefined }
     expect(parsed(raw).ui).toEqual({ status: 'missing' })
   })
 
