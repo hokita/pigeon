@@ -1,7 +1,6 @@
 import { ALLOWED_TYPES, schemaLibrary, uiGuideSchema } from '../ui/library.js'
 import { UI_LIMITS } from '../ui/limits.js'
 
-// Small example trees shown to Muse. guide.test.ts checks they stay valid.
 export const GUIDE_EXAMPLES = {
   news: {
     schemaVersion: 1,

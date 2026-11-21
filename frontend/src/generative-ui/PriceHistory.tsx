@@ -11,7 +11,6 @@ import { formatPrice, shortDate } from '../format'
 const lib = official as GenerativeUILibrary
 const chartOnly: GenerativeUILibrary = { Chart: lib.Chart, Fact: lib.Fact }
 
-// Points come from pigeon's recorded observations, never from the tree (design §6.5).
 export function PriceHistory({ product, title }: { product: string; title?: string }) {
   const { products, priceHistories } = use(PriceHistoryContext)
   const id = resolveProduct(product, products)

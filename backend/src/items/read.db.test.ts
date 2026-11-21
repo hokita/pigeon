@@ -9,7 +9,7 @@ async function save(raw: unknown) {
   const res = parseFeedItemInput(raw, new Date('2026-11-20T00:00:00Z'))
   if (!res.ok) throw new Error(res.error)
   const saved = await saveFeedItem(res.value, res.ui)
-  await new Promise((r) => setTimeout(r, 3)) // distinct createdAt
+  await new Promise((r) => setTimeout(r, 3))
   return saved
 }
 
@@ -64,7 +64,6 @@ describe('listItems', () => {
   it('listItems returns the stored change without reading observations', async () => {
     await save(priceItem(1, 39600))
     const second = await save(priceItem(2, 32800))
-    // Remove every observation: the feed must still show the change stored on the item.
     const db = getFirestore()
     for (const p of (await db.collection('products').get()).docs) {
       for (const o of (await p.ref.collection('observations').get()).docs) await o.ref.delete()

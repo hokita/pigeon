@@ -33,7 +33,6 @@ export default function App() {
   if (!user) return <LoginPage />
   return (
     <>
-      {/* Lets the owner switch accounts, e.g. after signing in with one not in ALLOWED_EMAILS. */}
       <div className="max-w-3xl mx-auto px-4 pt-3 flex justify-end">
         <button
           type="button"

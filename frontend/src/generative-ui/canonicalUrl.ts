@@ -1,4 +1,3 @@
-// The same generic rules as backend/src/urls.ts (design §7.2): no host-specific rules.
 const TRACKING_PARAMS = new Set([
   'fbclid',
   'gclid',
@@ -50,7 +49,6 @@ export function canonicalUrl(value: string): string | null {
 
 type ProductRef = { productId: string; productKey?: string; url: string; canonicalUrl: string }
 
-// A PriceHistory `product` names an entry by productKey, then url, then canonical url.
 export function resolveProduct(ref: string, products: readonly ProductRef[]): string | undefined {
   const byKey = products.find((p) => p.productKey !== undefined && p.productKey === ref)
   if (byKey) return byKey.productId

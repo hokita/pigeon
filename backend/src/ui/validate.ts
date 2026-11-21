@@ -26,7 +26,6 @@ function joinPath(base: string, parts: readonly PropertyKey[]): string {
   return out
 }
 
-// Size, node, depth and image limits, checked before anything else (design §6.3).
 function checkLimits(root: unknown, envelope: unknown): UiIssue | null {
   if (Buffer.byteLength(JSON.stringify(envelope)) > UI_LIMITS.maxBytes) {
     return { path: 'root', message: `UI definition too large (max ${UI_LIMITS.maxBytes} bytes)` }
@@ -83,7 +82,6 @@ function normalizeNode(node: unknown, path: string, issues: UiIssue[]): UiChild 
   const parsed = propSchema(type).safeParse(props)
   if (!parsed.success) issues.push(...zodIssues(path, parsed.error))
 
-  // Parsed props drop unknown keys nested inside official objects (e.g. a table column).
   const out: UiNode = { $type: type, ...(parsed.success ? (parsed.data as object) : props) }
   if (node.children === undefined) {
     if (type === 'Tabs' && Array.isArray(props.tabs) && props.tabs.length > 0) {

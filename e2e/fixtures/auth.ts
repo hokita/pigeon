@@ -12,7 +12,6 @@ export async function signIn(page: Page, path = '/') {
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 }
 
-// Serve every example image host from a local PNG so runs stay offline.
 export async function routeImages(page: Page) {
   await page.route(/^https:\/\/[^/]*example\.(com|org|net)\//, (route) =>
     route.fulfill({ path: new URL('../assets/sample.png', import.meta.url).pathname })

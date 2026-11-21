@@ -1,7 +1,6 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
-/* shadcn-style theme tokens, read by the vendored generative-ui CSS and by pigeon's own UI. */
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
@@ -73,9 +72,6 @@
   box-sizing: border-box;
 }
 
-/* Long words and URLs inside generated parts wrap instead of widening the page;
-   flex children may shrink below their content width. Table cells keep their
-   width so a wide table scrolls inside its own container. */
 [data-aui] {
   min-width: 0;
   overflow-wrap: anywhere;

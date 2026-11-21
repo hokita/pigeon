@@ -1,7 +1,6 @@
 import { getApps, initializeApp } from 'firebase-admin/app'
 import { beforeEach } from 'vitest'
 
-// Test-only: the Firestore emulator started by `npm run test:db`.
 export const TEST_PROJECT = 'demo-pigeon-test'
 
 if (!process.env.FIRESTORE_EMULATOR_HOST) {

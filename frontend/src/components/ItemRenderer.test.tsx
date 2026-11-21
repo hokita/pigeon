@@ -3,12 +3,12 @@ import { render, screen } from '@testing-library/react'
 import { z } from 'zod'
 import ItemRenderer from './ItemRenderer'
 import { renderLibrary } from '../generative-ui/renderLibrary'
-import { loadFixture } from '../testing/fixtures'
+import { loadFixture, type FixtureName } from '../testing/fixtures'
 import type { FeedItemDetail, ItemResponse } from '../types'
 
 const NOTE = "Showing the saved content; the layout Muse sent couldn't be used."
 
-function response(fixture: string, overrides: Partial<FeedItemDetail> = {}): ItemResponse {
+function response(fixture: FixtureName, overrides: Partial<FeedItemDetail> = {}): ItemResponse {
   const raw = loadFixture(fixture)
   return {
     item: {

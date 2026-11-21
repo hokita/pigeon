@@ -72,10 +72,9 @@ describe('guardTree', () => {
     expect(guardTree(big, pigeonLibrary)).toBeNull()
   })
 
-  it.each(['sample-news', 'sample-research', 'sample-price-drop'])(
+  it.each(['sample-news', 'sample-research', 'sample-price-drop'] as const)(
     'accepts the %s fixture unchanged',
     (name) => {
-      // The backend–frontend contract: every tree the backend accepts renders without replacements.
       expect(guardTree(loadFixture(name).ui.root, pigeonLibrary)!.replaced).toBe(0)
     }
   )
