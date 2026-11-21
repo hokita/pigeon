@@ -48,7 +48,6 @@ export type Fixture = {
 
 export type PriceFixture = Fixture & { products: FixtureProduct[] }
 
-// A unique id per test run, so saved items never collide with earlier runs.
 export const RUN = Date.now().toString(36)
 
 export function fixture(name: 'sample-price-drop'): PriceFixture

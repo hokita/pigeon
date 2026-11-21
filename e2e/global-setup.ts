@@ -18,8 +18,6 @@ async function waitUntilListening(url: string, attempts = 40, delayMs = 500) {
   throw new Error(`Timed out waiting for ${url} to accept connections`)
 }
 
-// accounts:signUp fails with EMAIL_EXISTS if the user exists from a prior run
-// against this emulator session, so look its localId up instead.
 async function findExistingLocalId(): Promise<string | undefined> {
   const res = await fetch(
     `${AUTH_EMULATOR_URL}/identitytoolkit.googleapis.com/v1/accounts:lookup?key=fake-api-key`,
@@ -38,7 +36,6 @@ export default async function globalSetup() {
   await waitUntilListening(AUTH_EMULATOR_URL)
   await waitUntilListening(FIRESTORE_EMULATOR_URL)
 
-  // Start every run from an empty database.
   await fetch(
     `${FIRESTORE_EMULATOR_URL}/emulator/v1/projects/${PROJECT_ID}/databases/(default)/documents`,
     {
@@ -58,7 +55,6 @@ export default async function globalSetup() {
   const localId = signUpData.localId ?? (await findExistingLocalId())
   if (!localId) throw new Error(`Could not determine the e2e test user's localId for ${TEST_EMAIL}`)
 
-  // The Auth emulator only honors emailVerified from a privileged caller (Bearer owner).
   const updateRes = await fetch(
     `${AUTH_EMULATOR_URL}/identitytoolkit.googleapis.com/v1/accounts:update?key=fake-api-key`,
     {

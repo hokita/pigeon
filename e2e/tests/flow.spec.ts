@@ -2,7 +2,6 @@ import { test, expect, type Page } from '@playwright/test'
 import { routeImages, signIn } from '../fixtures/auth.js'
 import { fixture, RUN, saveItem } from '../fixtures/mcp.js'
 
-// A price item for its own product (unique key per test), observed on a November day.
 function priceItem(tag: string, day: number, price: number) {
   const raw = fixture('sample-price-drop')
   const d = String(day).padStart(2, '0')
@@ -204,7 +203,6 @@ test('dark mode renders', async ({ page }) => {
   const saved = await saveItem(fixture('sample-news'), { dedupeKey: `news:dark-${RUN}` })
   await signIn(page)
   await openItem(page, saved.url)
-  // Paint a pixel with the computed colour to get sRGB, whatever colour syntax the CSS uses.
   const luminance = await page.evaluate(() => {
     const color = getComputedStyle(document.body).backgroundColor
     const ctx = document.createElement('canvas').getContext('2d')!
