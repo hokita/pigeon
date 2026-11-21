@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
-import { apiOriginsMissingFromCsp } from './testing/cspRule'
+import { apiOriginsMissingFromCsp, cspDirective } from './testing/cspRule'
 
 // vitest runs from frontend/
 const firebaseJson = readFileSync('../firebase.json', 'utf8')
@@ -70,5 +70,27 @@ describe('hosting CSP', () => {
   // connect-src in firebase.json, or every API call from Hosting is blocked.
   it('allows every VITE_API_URL a workflow builds with', () => {
     expect(apiOriginsMissingFromCsp(firebaseJson, workflows)).toEqual([])
+  })
+
+  it('allows no local development hosts', () => {
+    expect(
+      cspDirective(firebaseJson, 'connect-src').filter((s) => /localhost|127\.0\.0\.1/.test(s))
+    ).toEqual([])
+  })
+
+  it('frames only the project auth domain', () => {
+    expect(cspDirective(firebaseJson, 'frame-src')).toEqual([
+      'https://pigeon-d6e3b8.firebaseapp.com',
+    ])
+  })
+})
+
+describe('cspDirective', () => {
+  it('returns the sources of one directive', () => {
+    expect(cspDirective(csp("'self' https://a.example"), 'connect-src')).toEqual([
+      "'self'",
+      'https://a.example',
+    ])
+    expect(cspDirective(csp("'self'"), 'frame-src')).toEqual([])
   })
 })
