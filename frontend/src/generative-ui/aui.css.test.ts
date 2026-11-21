@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 
-const css = readFileSync('src/generative-ui/aui.css', 'utf8') // vitest runs from frontend/
+const css = readFileSync('src/generative-ui/aui.css', 'utf8')
 
 describe('vendored generative-ui stylesheet', () => {
   it('has the official component rules', () => {

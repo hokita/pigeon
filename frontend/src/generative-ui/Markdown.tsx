@@ -2,7 +2,6 @@ import ReactMarkdown, { type Components } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { safeImageUrl, safeLinkUrl } from './safeUrl'
 
-// No rehype-raw: raw HTML in the Markdown is escaped and shown as text.
 const components: Components = {
   a: ({ href, children }) => {
     const safe = safeLinkUrl(href)

@@ -44,7 +44,6 @@ export type Fixture = {
 
 export type PriceFixture = Fixture & { products: FixtureProduct[] }
 
-// Test-only: the shared save_feed_item inputs in /fixtures (vitest runs from frontend/).
 export function loadFixture(name: 'sample-price-drop'): PriceFixture
 export function loadFixture(name: Exclude<FixtureName, 'sample-price-drop'>): Fixture
 export function loadFixture(name: FixtureName): Fixture

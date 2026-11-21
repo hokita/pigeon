@@ -43,8 +43,6 @@ function Sources({ sources }: { sources: FeedSource[] }) {
   )
 }
 
-// The page frame (title, Written by Muse, type, date, Sources) is always drawn here,
-// outside the tree, so it shows whatever state the stored tree is in (design §8).
 export default function ItemPage({
   id,
   navigate,

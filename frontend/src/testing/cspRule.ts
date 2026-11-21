@@ -1,5 +1,3 @@
-// Test-only: checks that the hosting CSP lets the built frontend reach its API.
-
 type HostingHeaders = { hosting?: { headers?: { headers: { key: string; value: string }[] }[] } }
 
 export function cspDirective(firebaseJson: string, directiveName: string): string[] {
@@ -14,11 +12,8 @@ export function cspDirective(firebaseJson: string, directiveName: string): strin
   return directive?.slice(1) ?? []
 }
 
-// Matches `VITE_API_URL: value` (YAML env) and `VITE_API_URL=value` (shell).
 const API_URL = /VITE_API_URL['"]?\s*[:=]\s*['"]?([^\s'"#]+)/g
 
-// Each problem as "<workflow>: <reason>". Origins must be listed exactly: a
-// wildcard such as https://*.run.app would also allow other people's services.
 export function apiOriginsMissingFromCsp(
   firebaseJson: string,
   workflows: { name: string; text: string }[]
