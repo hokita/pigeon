@@ -78,9 +78,16 @@ describe('hosting CSP', () => {
     ).toEqual([])
   })
 
-  it('frames only the project auth domain', () => {
-    expect(cspDirective(firebaseJson, 'frame-src')).toEqual([
-      'https://pigeon-d6e3b8.firebaseapp.com',
+  it('frames only its own origin, where the auth helper iframe is served', () => {
+    expect(cspDirective(firebaseJson, 'frame-src')).toEqual(["'self'"])
+  })
+})
+
+describe('frontend deploy', () => {
+  it('signs in through the Hosting domain the app is served from', () => {
+    const frontend = workflows.find((w) => w.name === 'frontend.yml')!.text
+    expect([...frontend.matchAll(/VITE_FIREBASE_AUTH_DOMAIN:\s*(\S+)/g)].map((m) => m[1])).toEqual([
+      'pigeon-d6e3b8.web.app',
     ])
   })
 })

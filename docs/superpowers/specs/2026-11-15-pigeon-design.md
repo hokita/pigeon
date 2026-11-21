@@ -300,7 +300,7 @@ All `/api/*` routes need a Firebase ID token for an email in `ALLOWED_EMAILS` (o
 | Failures don't crash the app | Per-element boundaries (official), plus pigeon's `RenderBoundary`, plus the fallback tree. |
 | Token handling | Secret Manager, hashed constant-time compare, never logged (tested), rotation revokes it. |
 | Web app auth | Google sign-in plus the `ALLOWED_EMAILS` check on every API call (owlet's pattern). Firestore rules deny clients. |
-| Hosting headers | `firebase.json` sets a CSP: `default-src 'self'`, `script-src 'self' https://apis.google.com`, `img-src https:`, `style-src 'self' 'unsafe-inline'` (React inline image sizing), `connect-src 'self' <backend> https://*.googleapis.com`, `frame-src https://<project>.firebaseapp.com`. Also `Referrer-Policy: no-referrer` and `X-Content-Type-Options: nosniff`. |
+| Hosting headers | `firebase.json` sets a CSP: `default-src 'self'`, `script-src 'self' https://apis.google.com`, `img-src https:`, `style-src 'self' 'unsafe-inline'` (React inline image sizing), `connect-src 'self' <backend> https://*.googleapis.com`, `frame-src 'self'` (the auth helper iframe is served from the app's own `<project>.web.app`, which is also the `authDomain`; see the README). Also `Referrer-Policy: no-referrer` and `X-Content-Type-Options: nosniff`. |
 
 ## 12. Repository layout and conventions (copied from owlet)
 

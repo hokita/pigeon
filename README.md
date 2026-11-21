@@ -149,6 +149,12 @@ gcloud artifacts repositories set-cleanup-policies pigeon --location=asia-northe
 
 # 5. Auth: register a web app (its config is public, as in owlet), then turn on the
 #    Google sign-in provider in the Firebase console (Authentication → Sign-in method).
+#    authDomain is <PROJECT_ID>.web.app, not firebaseapp.com, so the sign-in helper is
+#    on the app's own origin (Safari and in-app browsers partition third-party storage:
+#    https://firebase.google.com/docs/auth/web/redirect-best-practices, option 1).
+#    In the console, add https://<PROJECT_ID>.web.app/__/auth/handler to the
+#    "Web client (auto created by Google Service)" Authorized redirect URIs
+#    (APIs & Services → Credentials).
 firebase apps:create web pigeon --project <PROJECT_ID>
 firebase apps:sdkconfig web --project <PROJECT_ID>
 
