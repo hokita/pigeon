@@ -2,7 +2,7 @@
 
 type HostingHeaders = { hosting?: { headers?: { headers: { key: string; value: string }[] }[] } }
 
-function connectSrc(firebaseJson: string): string[] {
+export function cspDirective(firebaseJson: string, directiveName: string): string[] {
   const { hosting } = JSON.parse(firebaseJson) as HostingHeaders
   const policy = hosting?.headers
     ?.flatMap((h) => h.headers)
@@ -10,7 +10,7 @@ function connectSrc(firebaseJson: string): string[] {
   const directive = policy
     ?.split(';')
     .map((d) => d.trim().split(/\s+/))
-    .find(([name]) => name === 'connect-src')
+    .find(([name]) => name === directiveName)
   return directive?.slice(1) ?? []
 }
 
@@ -23,7 +23,7 @@ export function apiOriginsMissingFromCsp(
   firebaseJson: string,
   workflows: { name: string; text: string }[]
 ): string[] {
-  const allowed = connectSrc(firebaseJson)
+  const allowed = cspDirective(firebaseJson, 'connect-src')
   return workflows.flatMap(({ name, text }) =>
     [...text.matchAll(API_URL)].flatMap(([, value]) => {
       if (!URL.canParse(value)) {

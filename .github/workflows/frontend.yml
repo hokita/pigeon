@@ -1,0 +1,58 @@
+name: Deploy frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'firebase.json'
+      - '.firebaserc'
+      - '.github/workflows/frontend.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Firebase Hosting
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.3'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Test
+        working-directory: frontend
+        run: npm test
+
+      - name: Build
+        working-directory: frontend
+        env:
+          VITE_API_URL: https://pigeon-backend-173280853390.asia-northeast1.run.app
+          VITE_FIREBASE_API_KEY: AIzaSyAqJqzh-av_X0pMNMqdL4bAHmXD_8QP9fc
+          VITE_FIREBASE_AUTH_DOMAIN: pigeon-d6e3b8.firebaseapp.com
+          VITE_FIREBASE_PROJECT_ID: pigeon-d6e3b8
+        run: npm run build
+
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Deploy
+        run: npx -y firebase-tools@15.22.1 deploy --only hosting --project pigeon-d6e3b8 --non-interactive
