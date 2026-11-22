@@ -8,7 +8,7 @@
 
 **Tech Stack:** npm 11 / Node 24.22.3, GitHub Actions, Trivy 0.76.2 (official image by digest), gcloud on the runner, `node:test` for scripts.
 
-**Spec:** `/Users/hokita/ghq/github.com/hokita/orch/docs/superpowers/specs/2026-11-22-audit-checks-design.md` (pigeon rows of §5, §6, §7, §8, §9). The survey file named in the brief (`/tmp/audit-survey/pigeonRT.md`) does not exist; pigeon's section of `/tmp/audit-survey/REPORT.md` was used instead.
+**Spec:** the cross-repo audit-checks design (2026-11-22, approved by the user) (pigeon rows of §5, §6, §7, §8, §9). The pigeon section of the survey report was used.
 
 ## Global Constraints
 
@@ -66,12 +66,12 @@ Open as a **draft first** (spec step 1) so Trivy runs on CI and lists image find
 **Files:** Modify `scripts/check-node-pins.sh`, `backend/Dockerfile`. Create `scripts/check-node-pins.test.mjs`.
 
 - [ ] **Failing tests** (`node:test`; each copies `scripts/check-node-pins.sh`, `backend/Dockerfile`, `.github/workflows/*.yml`, and the three `package.json` into a temp dir with the same layout, mutates it, runs the copied script):
-  - `accepts FROM node:24.22.3-alpine@sha256:<64 hex> in both stages` → exit 0
+  - `accepts FROM node:24.22.3-alpine@sha256:<64 hex> in every stage` → exit 0
   - `rejects a FROM without a digest` → exit 1, stdout contains `wrong Dockerfile FROM`
   - `rejects a short or uppercase digest` → exit 1
   - `rejects a digest-pinned FROM with another version` (`node:24.22.1-alpine@sha256:…`) → exit 1
 - [ ] Run `node --test 'scripts/*.test.mjs'` → first test fails.
-- [ ] Change the FROM pattern to `^FROM node:${v}-alpine@sha256:[0-9a-f]{64}( AS [a-z]+)?$`; pin both `FROM` lines to `node:24.22.3-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5` (re-resolve the index digest at implementation time and use that).
+- [ ] Change the FROM pattern to `^FROM node:${v}-alpine@sha256:[0-9a-f]{64}( AS [a-z]+)?$`; pin all three `FROM` lines to `node:24.22.3-alpine@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5` (re-resolve the index digest at implementation time and use that).
 - [ ] Tests pass; `scripts/check-node-pins.sh` passes on the real tree. Commit.
 
 ### Task 3: Action pin check
@@ -132,10 +132,12 @@ dependabot.yml (`version: 2`):
 
 ### Task 7: Red once, then green
 
-- [ ] From the gates branch, push a throwaway branch `demo/audit-red` that (a) removes the grpc-js override from `frontend/package.json` + lock, and (b) sets both Dockerfile stages to `node:20.0.0-alpine@sha256:<its digest>`. Open it as a draft PR against main **without** a description beyond "throwaway red demo, never merged".
+- [ ] From the gates branch, push a throwaway branch `demo/audit-red` that (a) removes the grpc-js override from `frontend/package.json` + lock, and (b) sets only the runtime (last) `FROM` to `node:20.0.0-alpine@sha256:<its digest>` (changing every stage breaks `docker build`, since TypeScript fails on Node 20, so Trivy never runs). Open it as a draft PR against main **without** a description beyond "throwaway red demo, never merged".
 - [ ] Expect red: `Prod audit (frontend)` (grpc-js) and `Image scan (backend)` (old Node/Alpine). Node pins also red, expected. Record the run URL.
 - [ ] Close that PR and delete the branch. Gates PR shows all jobs green; its body links the red run.
 - [ ] Merge (orchestrator) triggers all three deploy workflows (their files changed); watch them. Then `gh workflow run audit-nightly.yml --ref main`; done when that run is green.
+
+**Done:** red demo run 45020270542 on throwaway PR #9 (closed, branch deleted): `Image scan (backend)` failed on a real Trivy result, `Total: 10 (HIGH: 10, CRITICAL: 0)` in alpine 3.17.3; `Prod audit (frontend)` failed on grpc-js (4 high); `Node pins` red as expected. Run 45019968061 is not evidence: its image red was a build failure. The green run on the rebased PR is 45020270542's counterpart, run 45019935238 (9/9).
 
 ## Phase 4 — settings after PR 2 merges and the first nightly is green (orchestrator, `gh api`)
 

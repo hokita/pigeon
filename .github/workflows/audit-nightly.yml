@@ -17,6 +17,7 @@ jobs:
   prod-audit:
     name: Prod audit (${{ matrix.dir }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -36,6 +37,7 @@ jobs:
   dev-audit:
     name: Dev audit (${{ matrix.dir }})
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -55,6 +57,7 @@ jobs:
   action-pins:
     name: Action pins
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -69,6 +72,7 @@ jobs:
   deployed-image:
     name: Deployed image (backend)
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     if: github.ref == 'refs/heads/main'
 
     steps:
@@ -106,5 +110,5 @@ jobs:
           IMG: ${{ steps.pull.outputs.img }}
         run: |
           v=$(docker run --rm --entrypoint node "$IMG" --version)
-          curl -fsS https://nodejs.org/dist/index.json -o "$RUNNER_TEMP/index.json"
+          curl -fsS --retry 3 --retry-all-errors https://nodejs.org/dist/index.json -o "$RUNNER_TEMP/index.json"
           node scripts/node-security.mjs --current "$v" --index "$RUNNER_TEMP/index.json"
