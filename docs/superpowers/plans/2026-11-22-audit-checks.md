@@ -32,6 +32,8 @@ Override dry-run in a scratch copy: `"overrides": {"@grpc/grpc-js": "1.13.7"}` â
 `frontend/src` never imports `firebase/firestore` (only app/auth), so no test or page loads grpc-js.
 Unknown until CI runs: Trivy findings in `node:24.22.3-alpine` (Alpine packages, the npm bundled in the image) and in the image's `node_modules`. No Go in pigeon, so no govulncheck.
 
+Trivy on draft PR #5 (2026-11-22): 6 HIGH, all in the npm bundled in `node:24.22.3-alpine` (brace-expansion 5.0.9: CVE-2026-102276, CVE-2026-102278; undici 6.28.0: CVE-2026-109383, CVE-2026-109869, CVE-2026-19534, CVE-2026-87018). Alpine 3.24.4 and the app's `node_modules`: 0. Fixed by PR #8 (npm, npx and corepack removed from the runtime stage, owlet's shape with a `deps` stage), proven red/green on throwaway PR #7. The Dockerfile now has 3 `FROM` lines, all digest-pinned.
+
 ---
 
 ## Phase 0 â€” settings before any PR (orchestrator, `gh api`)
