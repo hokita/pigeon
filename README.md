@@ -68,7 +68,7 @@ cd backend && npm run test:db   # Firestore emulator tests (Java 21)
 cd frontend && npm test         # component tests (Vitest + Testing Library)
 cd e2e && npm ci && npx playwright install chromium && CI=1 npm test   # full flow, starts its own servers
 cd e2e && npm run test:servers-stopped                                  # nothing left listening
-scripts/check-node-pins.sh      # every Node pin is 24.22.3
+scripts/check-node-pins.sh      # every Node pin is 24.22.3 (Dockerfile base digest-pinned)
 ```
 
 Each package also has `npm run lint`, `npm run format:check` and `npx tsc --noEmit`. CI runs all of these on pull requests.
