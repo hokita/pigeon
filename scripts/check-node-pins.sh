@@ -30,7 +30,7 @@ check() {
 
 v="${expected//./\\.}"
 check "Dockerfile FROM" 3 '^FROM ' "^FROM node:${v}-alpine@sha256:[0-9a-f]{64}( AS [a-z]+)?$" backend/Dockerfile
-check "setup-node node-version" 9 'node-version:' "node-version: '${v}'$" .github/workflows/*.yml
+check "setup-node node-version" 13 'node-version:' "node-version: '${v}'$" .github/workflows/*.yml
 check "Volta node" 3 '"node":' "\"node\": \"${v}\"$" backend/package.json frontend/package.json e2e/package.json
 
 if [ "$bad" -ne 0 ]; then

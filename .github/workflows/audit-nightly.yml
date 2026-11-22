@@ -1,0 +1,110 @@
+name: Audit (nightly)
+
+on:
+  schedule:
+    - cron: '25 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: pigeon-d6e3b8
+  REGION: asia-northeast1
+
+jobs:
+  prod-audit:
+    name: Prod audit (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [backend, frontend]
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.22.3'
+
+      - name: Audit production dependencies
+        working-directory: ${{ matrix.dir }}
+        run: npm audit --omit=dev --audit-level=high
+
+  dev-audit:
+    name: Dev audit (${{ matrix.dir }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dir: [backend, frontend, e2e]
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.22.3'
+
+      - name: Audit all dependencies
+        working-directory: ${{ matrix.dir }}
+        run: npm audit --audit-level=high
+
+  action-pins:
+    name: Action pins
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.22.3'
+
+      - name: Check action SHA pins
+        run: node scripts/check-action-pins.mjs
+
+  deployed-image:
+    name: Deployed image (backend)
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24.22.3'
+
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093
+        with:
+          project_id: pigeon-d6e3b8
+          workload_identity_provider: ${{ secrets.WIF_PROVIDER }}
+          service_account: ${{ secrets.WIF_SERVICE_ACCOUNT }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker "$REGION-docker.pkg.dev" --quiet
+
+      - name: Pull the deployed image
+        id: pull
+        run: |
+          rev=$(gcloud run services describe pigeon-backend --region "$REGION" --project "$PROJECT_ID" --format='value(status.latestReadyRevisionName)')
+          img=$(gcloud run revisions describe "$rev" --region "$REGION" --project "$PROJECT_ID" --format='value(status.imageDigest)')
+          docker pull "$img"
+          echo "img=$img" >> "$GITHUB_OUTPUT"
+
+      - name: Scan deployed image
+        env:
+          IMG: ${{ steps.pull.outputs.img }}
+        run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:0.76.2@sha256:8f6bb947dbc528902e11f2f5be52f7b519f6a39d5d148f41166f2040499768fb image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 "$IMG"
+
+      - name: Check deployed Node version
+        if: ${{ !cancelled() && steps.pull.outcome == 'success' }}
+        env:
+          IMG: ${{ steps.pull.outputs.img }}
+        run: |
+          v=$(docker run --rm --entrypoint node "$IMG" --version)
+          curl -fsS https://nodejs.org/dist/index.json -o "$RUNNER_TEMP/index.json"
+          node scripts/node-security.mjs --current "$v" --index "$RUNNER_TEMP/index.json"
