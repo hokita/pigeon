@@ -1,4 +1,3 @@
-// Mirrors backend/src/items/read.ts field for field.
 export type PriceChange = { amount: number; percent: number }
 
 export type PricePoint = { observedAt: string; price: number }

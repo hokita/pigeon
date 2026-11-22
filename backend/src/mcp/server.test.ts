@@ -144,7 +144,6 @@ describe('pigeon MCP server', () => {
   })
 
   it('save_feed_item with invalid fields is a tool error', async () => {
-    // Schema errors come from the SDK's own validation of the published schema.
     const result = await save({ ...loadFixture('sample-news'), type: 'Not A Slug' })
     expect(result.isError).toBe(true)
     expect(textOf(result)).toMatch(/^Input validation error: .*type/s)

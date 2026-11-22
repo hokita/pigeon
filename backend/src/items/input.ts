@@ -97,8 +97,6 @@ export const saveFeedItemShape = {
     .max(20)
     .optional()
     .describe('Optional products with the price seen now. pigeon builds price history from these.'),
-  // Published without a schema the SDK would enforce: validateUiTree checks the
-  // tree, so a malformed one still saves the item with uiStatus 'invalid' (design §6.4).
   ui: z
     .unknown()
     .optional()
@@ -171,7 +169,6 @@ function stableJson(value: unknown): string {
   return JSON.stringify(value)
 }
 
-// Hash of the input as given, so a retry without observedAt (defaulted to now) is unchanged.
 export function contentHash(input: unknown): string {
   return createHash('sha256').update(stableJson(input)).digest('hex')
 }

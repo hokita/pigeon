@@ -6,8 +6,6 @@ import {
 } from '@assistant-ui/generative-ui/react'
 import { checkImageUrl, checkLinkUrl } from '../urls.js'
 
-// Schema v1 allowlist (design §6.2). Everything else, including interactive
-// components and Box/Diagram/Map, is rejected.
 export const CONTAINER_TYPES = ['Col', 'Row', 'Card', 'Tabs'] as const
 export const ALLOWED_TYPES: readonly string[] = [
   ...CONTAINER_TYPES,
@@ -97,7 +95,6 @@ const chartSize: Check = (props, ctx) => {
   }
 }
 
-// pigeon's tighter rules on top of the official schemas (design §6.2).
 const tighter: Record<string, Check[]> = {
   Tabs: [maxItems('tabs', 8)],
   Header: [maxString('text', 200)],
@@ -125,7 +122,6 @@ const baseSchemas: Record<string, z.ZodType> = {
   }),
 }
 
-// The official schemas strip unknown keys; pigeon rejects them (design §6.1).
 function baseSchema(type: string): z.ZodType {
   return baseSchemas[type] ?? (officialEntries[type].properties as unknown as z.ZodObject).strict()
 }
@@ -136,8 +132,6 @@ export function propSchema(type: string): z.ZodType {
   })
 }
 
-// The allowlisted library as data for the model-facing guide. The backend never
-// renders, so PriceHistory's render is a stub.
 export function schemaLibrary(): GenerativeUILibrary {
   const lib: GenerativeUILibrary = {}
   for (const type of ALLOWED_TYPES) {

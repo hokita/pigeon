@@ -1,7 +1,4 @@
 #!/usr/bin/env node
-// Saves the sample fixtures through the real MCP tool, as Muse would.
-// Run from backend/ (it uses backend's @modelcontextprotocol/client):
-//   PIGEON_MCP_TOKEN=... npm run seed [-- --url http://127.0.0.1:8180/mcp]
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
@@ -23,8 +20,6 @@ const { Client, StreamableHTTPClientTransport } = await import(
 const fixture = (name) =>
   JSON.parse(readFileSync(new URL(`../fixtures/${name}.json`, import.meta.url), 'utf8'))
 
-// An earlier observation of the same products, so the price-drop item has real history.
-// Saved first: an item's price change is computed when it is saved.
 const earlier = fixture('sample-price-drop')
 earlier.dedupeKey = 'price-watch:headphones:2026-11-14'
 earlier.title = '[Sample] WH-2000 headphones at list price'

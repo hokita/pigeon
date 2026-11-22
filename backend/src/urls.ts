@@ -2,8 +2,6 @@ import { createHash } from 'node:crypto'
 import { isIP } from 'node:net'
 import { UI_LIMITS } from './ui/limits.js'
 
-// Tracking-only query parameters, removed the same way for every shop (design §7.2).
-// Any `utm_*` parameter is also removed.
 export const TRACKING_PARAMS: readonly string[] = [
   'fbclid',
   'gclid',

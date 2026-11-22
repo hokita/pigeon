@@ -1,5 +1,3 @@
-// The same rules as backend/src/urls.ts: http(s) only for links, https only for
-// images, no credentials, no localhost/IP/dotless hosts, at most 2,048 chars.
 const MAX_URL_LENGTH = 2048
 const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/
 

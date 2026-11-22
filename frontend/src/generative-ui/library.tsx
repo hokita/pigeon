@@ -7,7 +7,6 @@ import { Markdown } from './Markdown'
 import { safeImageUrl } from './safeUrl'
 import { PriceHistory } from './PriceHistory'
 
-// Schema v1 allowlist (design §6.2), the same list as backend/src/ui/library.ts.
 export const ALLOWED_TYPES = [
   'Col',
   'Row',
@@ -39,14 +38,12 @@ const officialTypes = ALLOWED_TYPES.filter(
 
 export const pigeonLibrary: GenerativeUILibrary = {
   ...Object.fromEntries(officialTypes.map((t) => [t, lib[t]])),
-  // Only title and padding reach the official Card (no background, form or buttons).
   Card: {
     ...lib.Card,
     properties: z.strictObject({ title: cardShape.title, padding: cardShape.padding }),
     render: ({ title, padding, children, $status }) =>
       lib.Card.render({ title, padding, children, $status } as never),
   } as GenerativeUILibrary[string],
-  // Wide tables scroll inside their own container, never the page (design §8).
   Table: {
     ...lib.Table,
     render: (props) => (

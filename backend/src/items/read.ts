@@ -89,7 +89,6 @@ export async function listItems(opts: {
   if (opts.type) query = query.where('type', '==', opts.type)
   const cursor = opts.cursor ? decodeCursor(opts.cursor) : null
   if (cursor) query = query.startAfter(Timestamp.fromDate(new Date(cursor.createdAt)), cursor.id)
-  // One extra doc tells whether there's a next page.
   const snap = await query.limit(opts.limit + 1).get()
   const docs = snap.docs.slice(0, opts.limit)
   const items = docs.map((d) => summaryOf(d.id, d.data()))
@@ -129,7 +128,6 @@ export async function getItem(
     uiStatus: d.uiStatus,
     products,
   }
-  // History up to and including this item's own observation (design §7.2).
   const histories = await Promise.all(
     (d.products ?? []).map(async (p: DocumentData) => {
       const obs = await db

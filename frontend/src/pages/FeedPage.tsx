@@ -64,7 +64,6 @@ export default function FeedPage({
     }
   }
 
-  // A type from the URL that has no entry yet still gets a pressed button.
   const filters = types.map((t) => t.type)
   if (type && !filters.includes(type)) filters.push(type)
 

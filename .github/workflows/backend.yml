@@ -70,8 +70,6 @@ jobs:
           push: true
           tags: ${{ env.IMAGE }}:latest
 
-      # PIGEON_MCP_TOKEN is wired in only once the repo variable names its secret,
-      # so deploys work before the token exists (with /mcp off).
       - name: Deploy
         env:
           MCP_TOKEN_SECRET: ${{ vars.PIGEON_MCP_TOKEN_SECRET }}

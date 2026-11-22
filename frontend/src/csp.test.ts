@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { apiOriginsMissingFromCsp, cspDirective } from './testing/cspRule'
 
-// vitest runs from frontend/
 const firebaseJson = readFileSync('../firebase.json', 'utf8')
 const workflows = readdirSync('../.github/workflows')
   .filter((name) => /\.ya?ml$/.test(name))
@@ -66,8 +65,6 @@ describe('apiOriginsMissingFromCsp', () => {
 })
 
 describe('hosting CSP', () => {
-  // The deploy PR that sets the production VITE_API_URL must add its origin to
-  // connect-src in firebase.json, or every API call from Hosting is blocked.
   it('allows every VITE_API_URL a workflow builds with', () => {
     expect(apiOriginsMissingFromCsp(firebaseJson, workflows)).toEqual([])
   })

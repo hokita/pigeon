@@ -24,13 +24,11 @@ function withinLimits(root: unknown): boolean {
   return true
 }
 
-// The official schemas strip unknown keys; the guard rejects them, as the backend does.
 function strict(schema: z.ZodType): z.ZodType {
   const s = schema as z.ZodType & { strict?: () => z.ZodType }
   return typeof s.strict === 'function' ? s.strict() : schema
 }
 
-// Stored trees are untrusted: re-check them before rendering (design §6.4).
 export function guardTree(
   root: unknown,
   library: GenerativeUILibrary
@@ -44,7 +42,6 @@ export function guardTree(
       return { $type: 'Unsupported' }
     }
     const type = typeOf(node)
-    // Own entries only: a stored type such as "toString" must not reach Object.prototype.
     const entry =
       typeof type === 'string' && Object.prototype.hasOwnProperty.call(library, type)
         ? library[type]

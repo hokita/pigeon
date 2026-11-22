@@ -18,7 +18,6 @@ const monthDay = new Intl.DateTimeFormat('en-US', {
 
 export const formatPrice = (amount: number) => yen.format(amount)
 
-// e.g. 2026/11/15 09:00, in Tokyo time.
 export const formatDate = (iso: string) => dateTime.format(new Date(iso))
 
 export const shortDate = (iso: string) => monthDay.format(new Date(iso))
