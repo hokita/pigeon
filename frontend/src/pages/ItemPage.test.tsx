@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import type { ItemResponse } from '../types'
 
 const { getItem } = vi.hoisted(() => ({ getItem: vi.fn() }))
@@ -49,7 +49,7 @@ describe('ItemPage', () => {
     render(<ItemPage id={ID} navigate={navigate} />)
     expect(await screen.findByText('Tree header')).toBeInTheDocument()
     expect(screen.getByRole('heading', { level: 1, name: 'Heat pumps' })).toBeInTheDocument()
-    expect(document.title).toBe('Heat pumps · pigeon')
+    await waitFor(() => expect(document.title).toBe('Heat pumps · pigeon'))
     expect(getItem).toHaveBeenCalledWith(ID)
   })
 
