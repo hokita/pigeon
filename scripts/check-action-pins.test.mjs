@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -71,6 +71,57 @@ test("cli exits 0 when every action is pinned", () => {
     const result = spawnSync("node", [script, dir], { encoding: "utf8" });
     assert.equal(result.status, 0);
     assert.match(result.stdout, /All actions are pinned by SHA/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli runs when invoked through a symlinked path", () => {
+  const dir = mkdtempSync(join(tmpdir(), "action-pins-"));
+  try {
+    mkdirSync(join(dir, "root/.github/workflows"), { recursive: true });
+    writeFileSync(join(dir, "root/.github/workflows/ci.yml"), "steps:\n  - uses: actions/checkout@v4\n");
+    symlinkSync(dirname(script), join(dir, "linked"));
+    const result = spawnSync("node", [join(dir, "linked/check-action-pins.mjs"), join(dir, "root")], { encoding: "utf8" });
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /ci\.yml:2 actions\/checkout@v4/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli fails closed when the workflows directory is missing", () => {
+  const dir = mkdtempSync(join(tmpdir(), "action-pins-"));
+  try {
+    const result = spawnSync("node", [script, dir], { encoding: "utf8" });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /^No workflow files found in .*\.github\/workflows\n$/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli fails closed when the workflows directory has no workflow files", () => {
+  const dir = mkdtempSync(join(tmpdir(), "action-pins-"));
+  try {
+    mkdirSync(join(dir, ".github/workflows"), { recursive: true });
+    writeFileSync(join(dir, ".github/workflows/notes.txt"), "uses: actions/checkout@v4\n");
+    const result = spawnSync("node", [script, dir], { encoding: "utf8" });
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /^No workflow files found in .*\.github\/workflows\n$/);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("cli scans .yaml files too", () => {
+  const dir = mkdtempSync(join(tmpdir(), "action-pins-"));
+  try {
+    mkdirSync(join(dir, ".github/workflows"), { recursive: true });
+    writeFileSync(join(dir, ".github/workflows/deploy.yaml"), "steps:\n  - uses: actions/checkout@v4\n");
+    const result = spawnSync("node", [script, dir], { encoding: "utf8" });
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /deploy\.yaml:2 actions\/checkout@v4/);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

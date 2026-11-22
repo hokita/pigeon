@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -31,7 +31,17 @@ export function unpinnedUses(text) {
 function main() {
   const root = process.argv[2] ?? join(dirname(fileURLToPath(import.meta.url)), "..");
   const workflows = join(root, ".github/workflows");
-  const files = readdirSync(workflows).filter((name) => name.endsWith(".yml")).sort();
+  let names = [];
+  try {
+    names = readdirSync(workflows);
+  } catch {
+    names = [];
+  }
+  const files = names.filter((name) => /\.ya?ml$/.test(name)).sort();
+  if (files.length === 0) {
+    console.error(`No workflow files found in ${workflows}`);
+    process.exit(1);
+  }
   let failed = false;
   for (const name of files) {
     for (const { line, ref } of unpinnedUses(readFileSync(join(workflows, name), "utf8"))) {
@@ -43,4 +53,4 @@ function main() {
   console.log("All actions are pinned by SHA");
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main();
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) main();
