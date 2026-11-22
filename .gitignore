@@ -15,3 +15,4 @@ e2e/test-results/
 .superpowers/sdd/
 .superpowers/brainstorm/
 *.tsbuildinfo
+__pycache__/
