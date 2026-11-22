@@ -37,14 +37,14 @@ function withCopy(mutateDockerfile, run) {
 const rewriteFroms = (suffix) => (text) =>
   text.replace(/^FROM node:\S+/gm, `FROM node:${suffix}`);
 
-test("accepts FROM node:24.22.3-alpine@sha256:<64 hex> in every stage", () => {
-  withCopy(rewriteFroms(`24.22.3-alpine@${digest}`), (result) => {
+test("accepts FROM node:26.13.1-alpine@sha256:<64 hex> in every stage", () => {
+  withCopy(rewriteFroms(`26.13.1-alpine@${digest}`), (result) => {
     assert.equal(result.status, 0, result.stdout + result.stderr);
   });
 });
 
 test("rejects a FROM without a digest", () => {
-  withCopy(rewriteFroms("24.22.3-alpine"), (result) => {
+  withCopy(rewriteFroms("26.13.1-alpine"), (result) => {
     assert.equal(result.status, 1);
     assert.match(result.stdout, /wrong Dockerfile FROM/);
   });
@@ -52,14 +52,17 @@ test("rejects a FROM without a digest", () => {
 
 test("rejects a short or uppercase digest", () => {
   for (const bad of [`sha256:${"a".repeat(63)}`, `sha256:${"A".repeat(64)}`]) {
-    withCopy(rewriteFroms(`24.22.3-alpine@${bad}`), (result) => {
+    withCopy(rewriteFroms(`26.13.1-alpine@${bad}`), (result) => {
       assert.equal(result.status, 1);
     });
   }
 });
 
 test("rejects a digest-pinned FROM with another version", () => {
-  withCopy(rewriteFroms(`24.22.1-alpine@${digest}`), (result) => {
-    assert.equal(result.status, 1);
-  });
+  for (const version of ["26.13.0", "24.22.3"]) {
+    withCopy(rewriteFroms(`${version}-alpine@${digest}`), (result) => {
+      assert.equal(result.status, 1);
+      assert.match(result.stdout, /wrong Dockerfile FROM/);
+    });
+  }
 });

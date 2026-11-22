@@ -15,7 +15,7 @@
     "format:check": "prettier --check ."
   },
   "volta": {
-    "node": "24.22.3"
+    "node": "26.13.1"
   },
   "dependencies": {
     "@assistant-ui/generative-ui": "0.0.11",
