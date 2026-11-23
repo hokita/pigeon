@@ -173,7 +173,7 @@ export function uiGuideText(existingTypes: string[]): string {
     "- Never put past prices in a Chart; use PriceHistory with the product's productKey or url — pigeon draws it from recorded observations.",
     '- Prices are whole yen (JPY). Send productKey when the page shows a stable product code (SKU, JAN, model number).',
     '- Keep what the sources say and your own analysis in separate blocks. Put your analysis in an Alert titled "Muse\'s take".',
-    "- You don't need Citation nodes: the page always lists content.sources.",
+    "- You don't need Citation nodes: pigeon lists content.sources on the page when there are any.",
     '- Use only URLs you actually visited; leave url out when there is none, and never invent one.',
     '- Images must be https.',
     "- Items don't need sources: your own notes, findings and summaries can have none.",

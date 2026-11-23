@@ -242,7 +242,10 @@ describe('pigeon MCP server', () => {
     expect(guide).toContain(
       'Keep what the sources say and your own analysis in separate blocks. Put your analysis in an Alert titled "Muse\'s take".'
     )
-    expect(guide).toContain("You don't need Citation nodes: the page always lists content.sources.")
+    expect(guide).toContain(
+      "You don't need Citation nodes: pigeon lists content.sources on the page when there are any."
+    )
+    expect(guide).not.toMatch(/always lists/)
     expect(guide).toContain('Item types already in use: news, research.')
     expect(guide).toContain(
       'Use only URLs you actually visited; leave url out when there is none, and never invent one.'
