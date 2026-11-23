@@ -86,7 +86,7 @@ Each package also has `npm run lint`, `npm run format:check` and `npx tsc --noEm
   - 120 tool calls per hour per instance.
   - Request body up to 512 KB.
   - UI tree up to 200 KB, 400 nodes, 12 levels and 30 images.
-  - Items: up to 30 sources and 20 products. Prices are whole yen.
+  - Items: up to 30 sources (zero is fine; a source's url is optional) and 20 products. Prices are whole yen.
 - **Errors:** schema errors come back as the SDK's `Input validation error: …`. pigeon's own checks (a future `observedAt`, a duplicate product) come back as `Invalid input: <field>: <message>`. Both have `isError: true`.
 
 ## Sample data

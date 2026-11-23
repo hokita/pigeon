@@ -7,6 +7,7 @@ import { loadFixture, type FixtureName } from '../testing/fixtures'
 import type { FeedItemDetail, ItemResponse } from '../types'
 
 const NOTE = "Showing the saved content; the layout Muse sent couldn't be used."
+const MISSING = "Muse didn't send a layout for this item."
 
 function response(fixture: FixtureName, overrides: Partial<FeedItemDetail> = {}): ItemResponse {
   const raw = loadFixture(fixture)
@@ -52,11 +53,35 @@ describe('ItemRenderer', () => {
     expect(container.querySelector('[data-aui="citation"]')).toBeNull()
   })
 
+  it('the fallback shows no heading of its own', () => {
+    const raw = loadFixture('sample-invalid-ui')
+    const r = response('sample-invalid-ui', { ui: null, uiStatus: 'invalid' })
+    r.item.content = { ...r.item.content, markdown: `# ${raw.title}\n\nSaved content` }
+    const { container } = render(<ItemRenderer response={r} />)
+    expect(screen.queryByRole('heading')).toBeNull()
+    const markdown = container.querySelector('[data-aui="markdown"]')?.textContent
+    expect(markdown).toContain('Saved content')
+    expect(markdown).not.toContain(raw.title)
+  })
+
   it('uses the fallback for an unknown schema version', () => {
     render(
       <ItemRenderer response={response('sample-news', { ui: { schemaVersion: 9, root: {} } })} />
     )
     expect(screen.getByText(NOTE)).toBeInTheDocument()
+    expect(screen.queryByText(MISSING)).toBeNull()
+  })
+
+  it('says Muse sent no layout when uiStatus is missing', () => {
+    render(<ItemRenderer response={response('sample-news', { ui: null, uiStatus: 'missing' })} />)
+    expect(screen.getByText(MISSING)).toBeInTheDocument()
+    expect(screen.queryByText(NOTE)).toBeNull()
+  })
+
+  it('keeps the fallback note when uiStatus is invalid', () => {
+    render(<ItemRenderer response={response('sample-news', { ui: null, uiStatus: 'invalid' })} />)
+    expect(screen.getByText(NOTE)).toBeInTheDocument()
+    expect(screen.queryByText(MISSING)).toBeNull()
   })
 
   it('replaces a bad stored node with a notice', () => {
@@ -92,6 +117,23 @@ describe('ItemRenderer', () => {
     }
     render(<ItemRenderer response={r} library={library} />)
     expect(screen.getByText('Still here')).toBeInTheDocument()
+  })
+
+  it('the crash fallback also drops the leading title line', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const fail = () => {
+      throw new Error('broken library')
+    }
+    const library = new Proxy({} as typeof renderLibrary, {
+      get: fail,
+      getOwnPropertyDescriptor: fail,
+      has: fail,
+    })
+    const r = response('sample-news')
+    r.item.content = { ...r.item.content, markdown: `# ${r.item.title}\n\nBody text` }
+    const { container } = render(<ItemRenderer response={r} library={library} />)
+    expect(screen.getByText('Body text')).toBeInTheDocument()
+    expect(container.textContent).not.toContain(r.item.title)
   })
 
   it('a stored node named toString does not blank the page', () => {

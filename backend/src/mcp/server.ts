@@ -10,7 +10,10 @@ import type { RateLimiter } from '../middleware/rateLimit.js'
 import { uiGuideText } from './guide.js'
 
 export const SERVER_INSTRUCTIONS =
-  'pigeon stores feed items for the owner. Call get_ui_guide once before building a ui tree. Use only URLs you actually visited. Never invent prices or past prices; use PriceHistory for price history. Save each item once with save_feed_item; saving again with the same dedupeKey updates it.'
+  'pigeon stores feed items for the owner. Always include a ui layout with every save_feed_item; call get_ui_guide once before building one. Use only URLs you actually visited; leave url out when there is none, and never invent one. Never invent prices or past prices; use PriceHistory for price history. Save each item once with save_feed_item; saving again with the same dedupeKey updates it.'
+
+export const MISSING_UI_HINT =
+  'No layout sent; this item shows as plain text. Call get_ui_guide and save again with a ui.'
 
 function text(value: string): CallToolResult {
   return { content: [{ type: 'text', text: value }] }
@@ -57,7 +60,7 @@ export function createPigeonMcpServer({
     'save_feed_item',
     {
       description:
-        'Save one item (news, research, a price drop, anything) to the owner’s pigeon feed, with an optional UI tree for how to show it. Saving again with the same dedupeKey replaces the item.',
+        'Save one item (news, research, a price drop, anything) to the owner’s pigeon feed. Always include a ui layout for how to show it; without one the item shows as plain text. Saving again with the same dedupeKey replaces the item.',
       inputSchema: z.object(saveFeedItemShape),
       annotations: { destructiveHint: false, idempotentHint: true },
     },
@@ -71,6 +74,7 @@ export function createPigeonMcpServer({
           status,
           uiStatus: parsed.ui.status,
           ...(parsed.ui.status === 'invalid' && { uiIssues: parsed.ui.issues }),
+          ...(parsed.ui.status === 'missing' && { hint: MISSING_UI_HINT }),
           url: `${frontendUrl}/items/${id}`,
         })
       )

@@ -129,6 +129,46 @@ test('an invalid tree falls back to the content', async ({ page }) => {
   await expect(page.locator('script:not([type="module"]):not([src])')).toHaveCount(0)
 })
 
+test('an item saved without a layout says so and shows the title once', async ({ page }) => {
+  const title = `No layout ${RUN}`
+  const news = fixture('sample-news')
+  news.content.markdown = `# ${title}\n\nBody without a layout.`
+  const saved = await saveItem(news, { title, dedupeKey: `news:missing-${RUN}`, ui: undefined })
+  expect(saved.uiStatus).toBe('missing')
+  expect(saved.hint).toBe(
+    'No layout sent; this item shows as plain text. Call get_ui_guide and save again with a ui.'
+  )
+  await signIn(page)
+  await openItem(page, saved.url)
+  await expect(page.getByText("Muse didn't send a layout for this item.")).toBeVisible()
+  await expect(
+    page.getByText("Showing the saved content; the layout Muse sent couldn't be used.")
+  ).toHaveCount(0)
+  await expect(page.getByRole('heading').filter({ hasText: title })).toHaveCount(1)
+  await expect(page.locator('[data-aui="markdown"]')).toContainText('Body without a layout.')
+  await expect(page.locator('[data-aui="markdown"]')).not.toContainText('# No layout')
+})
+
+test('a note with no sources ends cleanly and a URL-less source is plain text', async ({
+  page,
+}) => {
+  const none = fixture('sample-news')
+  none.content.sources = []
+  const noSources = await saveItem(none, { dedupeKey: `note:none-${RUN}` })
+  expect(noSources.uiStatus).toBe('valid')
+  const chat = `Owner chat ${RUN}`
+  const withTitleOnly = fixture('sample-news')
+  withTitleOnly.content.sources = [{ title: chat }]
+  const noUrl = await saveItem(withTitleOnly, { dedupeKey: `note:nourl-${RUN}` })
+  await signIn(page)
+  await openItem(page, noSources.url)
+  await expect(page.locator('[data-aui="markdown"]').first()).toBeVisible()
+  await expect(page.locator('footer')).toHaveCount(0)
+  await openItem(page, noUrl.url)
+  await expect(page.locator('footer')).toContainText(chat)
+  await expect(page.locator('footer a')).toHaveCount(0)
+})
+
 test('re-saving with a broken tree shows the new content, not the old tree', async ({ page }) => {
   const key = `news:resave-${RUN}`
   const first = await saveItem(fixture('sample-news'), { dedupeKey: key })

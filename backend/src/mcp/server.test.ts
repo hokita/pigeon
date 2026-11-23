@@ -16,7 +16,7 @@ vi.mock('../items/read.js', async (orig) => ({
 import { itemIdFor, saveFeedItem } from '../items/store.js'
 import { listTypes } from '../items/read.js'
 import { createRateLimiter, type RateLimiter } from '../middleware/rateLimit.js'
-import { createMcpRequestHandler, SERVER_INSTRUCTIONS } from './server.js'
+import { createMcpRequestHandler, MISSING_UI_HINT, SERVER_INSTRUCTIONS } from './server.js'
 import { ALLOWED_TYPES } from '../ui/library.js'
 import { loadFixture } from '../testing/fixtures.js'
 
@@ -94,6 +94,75 @@ describe('pigeon MCP server', () => {
     expect((await connect()).getInstructions()).toBe(SERVER_INSTRUCTIONS)
   })
 
+  it('instructions ask for a ui on every save', () => {
+    expect(SERVER_INSTRUCTIONS).toMatch(/always include a ui/i)
+    expect(SERVER_INSTRUCTIONS).toMatch(/get_ui_guide/)
+  })
+
+  it('save_feed_item description asks for a ui layout', async () => {
+    const { tools } = await (await connect()).listTools()
+    expect(tools.find((t) => t.name === 'save_feed_item')!.description).toMatch(
+      /always include a ui/i
+    )
+  })
+
+  it('ui field description asks for a layout', async () => {
+    const { tools } = await (await connect()).listTools()
+    const ui = (
+      tools.find((t) => t.name === 'save_feed_item')!.inputSchema.properties as Record<
+        string,
+        { description?: string }
+      >
+    ).ui
+    expect(ui.description).toMatch(/always include/i)
+    expect(ui.description).not.toMatch(/Optional/)
+  })
+
+  it('save_feed_item without ui saves and returns the hint', async () => {
+    const result = await save({ ...loadFixture('sample-news'), ui: undefined })
+    expect(result.isError).toBeFalsy()
+    const id = itemIdFor('news:daily-ai:2026-11-15')
+    expect(JSON.parse(textOf(result))).toEqual({
+      id,
+      status: 'created',
+      uiStatus: 'missing',
+      hint: MISSING_UI_HINT,
+      url: `${FRONTEND}/items/${id}`,
+    })
+    expect(MISSING_UI_HINT).toBe(
+      'No layout sent; this item shows as plain text. Call get_ui_guide and save again with a ui.'
+    )
+    expect(saveFeedItem).toHaveBeenCalledTimes(1)
+  })
+
+  it('instructions keep the visited-URL rule and allow no url', () => {
+    expect(SERVER_INSTRUCTIONS).toContain(
+      'Use only URLs you actually visited; leave url out when there is none, and never invent one.'
+    )
+  })
+
+  it('sources and source url descriptions treat no URL as normal', async () => {
+    const { tools } = await (await connect()).listTools()
+    type Schema = { description?: string; properties?: Record<string, Schema>; items?: Schema }
+    const props = tools.find((t) => t.name === 'save_feed_item')!.inputSchema.properties as Record<
+      string,
+      Schema
+    >
+    const sources = props.content.properties!.sources
+    expect(sources.description).toMatch(/0 to 30/)
+    expect(sources.description).toMatch(/notes/)
+    expect(sources.items!.properties!.url.description).toMatch(/Leave it out/)
+  })
+
+  it('save_feed_item accepts an item with no sources', async () => {
+    const result = await save({
+      ...loadFixture('sample-news'),
+      content: { markdown: 'A note of my own.', sources: [] },
+    })
+    expect(result.isError).toBeFalsy()
+    expect(JSON.parse(textOf(result)).status).toBe('created')
+  })
+
   it('save_feed_item saves the news fixture', async () => {
     const result = await save(loadFixture('sample-news'))
     expect(result.isError).toBeFalsy()
@@ -113,6 +182,7 @@ describe('pigeon MCP server', () => {
     const body = JSON.parse(textOf(result))
     expect(body.uiStatus).toBe('invalid')
     expect(body.uiIssues[0].path).toMatch(/^root/)
+    expect(body.hint).toBeUndefined()
     expect(vi.mocked(saveFeedItem).mock.calls[0][1].status).toBe('invalid')
   })
 
@@ -172,8 +242,19 @@ describe('pigeon MCP server', () => {
     expect(guide).toContain(
       'Keep what the sources say and your own analysis in separate blocks. Put your analysis in an Alert titled "Muse\'s take".'
     )
-    expect(guide).toContain("You don't need Citation nodes: the page always lists content.sources.")
+    expect(guide).toContain(
+      "You don't need Citation nodes: pigeon lists content.sources on the page when there are any."
+    )
+    expect(guide).not.toMatch(/always lists/)
     expect(guide).toContain('Item types already in use: news, research.')
+    expect(guide).toContain(
+      'Use only URLs you actually visited; leave url out when there is none, and never invent one.'
+    )
+    expect(guide).toContain('- Images must be https.')
+    expect(guide).toContain(
+      "Items don't need sources: your own notes, findings and summaries can have none."
+    )
+    expect(guide).not.toContain('Use only URLs you actually visited. Images must be https.')
   })
 
   it('store failure is Internal error', async () => {

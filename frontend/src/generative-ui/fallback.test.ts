@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fallbackTree } from './fallback'
+import { fallbackTree, stripLeadingTitle } from './fallback'
 import { guardTree } from './guard'
 import { pigeonLibrary } from './library'
 import type { FeedItemDetail } from '../types'
@@ -36,14 +36,16 @@ const item = {
   ],
 } satisfies FeedItemDetail
 
-type Node = { $type: string; product?: string; children?: Node[] }
+type Node = { $type: string; product?: string; value?: string; children?: Node[] }
+
+const withMarkdown = (markdown: string) => ({ ...item, content: { ...item.content, markdown } })
 
 describe('fallbackTree', () => {
   it('fallbackTree has one PriceHistory per product and no Citation', () => {
     const tree = fallbackTree(item) as Node
     const types = tree.children!.map((c) => c.$type)
-    expect(types).toEqual(['Header', 'Markdown', 'PriceHistory', 'PriceHistory'])
-    expect(tree.children!.slice(2).map((c) => c.product)).toEqual([
+    expect(types).toEqual(['Markdown', 'PriceHistory', 'PriceHistory'])
+    expect(tree.children!.slice(1).map((c) => c.product)).toEqual([
       'sku:1',
       'https://b.example.com/y',
     ])
@@ -51,5 +53,31 @@ describe('fallbackTree', () => {
 
   it('fallbackTree passes guardTree with replaced 0', () => {
     expect(guardTree(fallbackTree(item), pigeonLibrary)!.replaced).toBe(0)
+  })
+
+  it('fallbackTree strips the title line from its Markdown', () => {
+    const tree = fallbackTree(withMarkdown('# Headphones\n\n## Hi')) as Node
+    expect(tree.children![0]).toMatchObject({ $type: 'Markdown', value: '## Hi' })
+  })
+
+  it('fallbackTree omits Markdown when only the title line was there', () => {
+    const tree = fallbackTree(withMarkdown('# Headphones\n'))
+    expect((tree as Node).children!.map((c) => c.$type)).toEqual(['PriceHistory', 'PriceHistory'])
+    expect(guardTree(tree, pigeonLibrary)!.replaced).toBe(0)
+  })
+})
+
+describe('stripLeadingTitle', () => {
+  it.each([
+    ['# Headphones\n\nBody', 'Body'],
+    ['# Headphones\r\n\r\nBody', 'Body'],
+    ['# Headphones  \nBody', 'Body'],
+    ['## Headphones\nBody', '## Headphones\nBody'],
+    ['# Headphones (updated)\nBody', '# Headphones (updated)\nBody'],
+    ['\n# Headphones\nBody', '\n# Headphones\nBody'],
+    ['Intro\n\n# Headphones', 'Intro\n\n# Headphones'],
+    ['# headphones\nBody', '# headphones\nBody'],
+  ])('stripLeadingTitle(%j) -> %j', (markdown, expected) => {
+    expect(stripLeadingTitle(markdown, 'Headphones')).toBe(expected)
   })
 })

@@ -144,7 +144,7 @@ Everything else, including `Box`, `Button`, form controls, `Diagram`, `Map`, `Ic
 - Request body for `/mcp`: 512 KB (`express.json({ limit })`). The MCP SDK sees nothing larger.
 - `ui` serialized: ≤ 200 KB. Nodes: ≤ 400. Depth: ≤ 12. Images per tree: ≤ 30.
 - URLs: ≤ 2,048 chars, parsed with `new URL`, scheme `https:` for images and products and `http:` or `https:` for links. No credentials (`user:pass@`). No IP-literal or `localhost` hosts.
-- Item: `title` ≤ 200, `summary` ≤ 500, `content.markdown` ≤ 20,000, `sources` 1–30, `products` ≤ 20.
+- Item: `title` ≤ 200, `summary` ≤ 500, `content.markdown` ≤ 20,000, `sources` 0–30 (amended 2026-11-23; was 1–30), `products` ≤ 20.
 
 ### 6.4 Validation, fallback and migration
 
@@ -165,7 +165,7 @@ The item's `content` (Markdown summary, sources, products with observed prices) 
 | --- | --- | --- |
 | `type` | string slug `[a-z][a-z0-9-]{0,31}` | Muse's choice, e.g. `news`, `research`, `price-watch`. Not an enum. |
 | `title`, `summary` | string | |
-| `content` | `{ markdown: string, sources: {title, url, publisher?, publishedAt?}[] }` | Muse's write-up. Labelled "Written by Muse" in the UI. |
+| `content` | `{ markdown: string, sources: {title, url?, publisher?, publishedAt?}[] }` | Muse's write-up. Labelled "Written by Muse" in the UI. |
 | `products` | `{ productId, productKey?, name, url, canonicalUrl, price, listPrice?, imageUrl?, retailer?, observedAt, change? }[]` (`change` set at save time, §7.2) | optional on any type; `[]` when absent. Prices are integer JPY. |
 | `uiJson` | JSON text of `{ schemaVersion: 1, root }`, or `null` | Stored as text because Firestore can't hold nested arrays (Table rows). The API returns it parsed, as `ui`. |
 | `uiStatus` | `"valid" \| "invalid" \| "missing"` | |
@@ -219,10 +219,10 @@ DetailPage ── api.getItem(id) ──► { item, priceHistories }
         └─ <RenderBoundary>                       [custom: React error boundary]
              <PriceHistoryContext value>          [custom]
                renderGenerativeUI(root, pigeonLibrary, { status: "done" })   [official]
-   └─ frame footer: "Sources" — content.sources (title, publisher, link)  [custom, always shown]
+   └─ frame footer: "Sources" — content.sources (title, publisher, link)  [custom, shown when there are sources]
 ```
 
-**Page frame** (orchestrator call, 2026-11-15): outside the tree, the detail page always shows a top line with the title, a `Written by Muse` label, the type and the date (`publishedAt`, else `createdAt`), and a `Sources` footer listing every `content.sources` entry (title, publisher if any, safe link). The tree is only the body. Trees don't need `Citation` nodes; Muse may still use them inline.
+**Page frame** (orchestrator call, 2026-11-15): outside the tree, the detail page always shows a top line with the title, a `Written by Muse` label, the type and the date (`publishedAt`, else `createdAt`), and a `Sources` footer listing every `content.sources` entry when there are any (title, publisher if any, safe link when a url is present; amended 2026-11-23). The tree is only the body. Trees don't need `Citation` nodes; Muse may still use them inline.
 
 - **Official:** `renderGenerativeUI` and `defaultGenerativeUILibrary` (for `Header`, `Text`, `Caption`, `Image`, `Divider`, `Table`, `Chart`, `Timeline`, `Steps`, `Card`, `Row`, `Col`, `Tabs`, `Alert`, `Citation`, `Fact`, `Badge`), the per-element error boundaries, unknown-type dropping, `Citation` link filtering and `Image` `no-referrer`. Styling comes from the official `generative-ui-style` registry CSS, vendored into `frontend/src/generative-ui/aui.css` with its source URL and sha256 (`e4dfc7c6…44dd` as fetched 2026-11-15) in a header comment. pigeon defines the shadcn theme tokens it reads for light and dark in `index.css`.
 - **Custom:** `pigeonLibrary`, which picks the allowlisted entries and overrides `Card` to drop the removed props; `Markdown`, the official registry's react-markdown + remark-gfm component with pigeon's link and image handling plus `prose dark:prose-invert`; `PriceHistory`; `Unsupported`, the guard's placeholder; `guardTree`; `fallbackTree`; `RenderBoundary`; `migrateUi`. No `imageOrigins` allowlist, because news images come from arbitrary sites. `https` is enforced on save and again in the guard instead.
@@ -252,7 +252,7 @@ DetailPage ── api.getItem(id) ──► { item, priceHistories }
        dedupeKey?: string,            // see §7.1
        content: {
          markdown: string,            // 1–20,000; Muse's write-up
-         sources: { title: string; url: string; publisher?: string; publishedAt?: string }[] // 1–30
+         sources: { title: string; url?: string; publisher?: string; publishedAt?: string }[] // 0–30
        },
        products?: {                   // optional on any type, ≤ 20
          name: string; url: string; productKey?: string /* §7.2 */; price: number /* integer JPY ≥ 0 */;
@@ -270,7 +270,7 @@ DetailPage ── api.getItem(id) ──► { item, priceHistories }
 
   2. `get_ui_guide`, annotated `{ readOnlyHint: true }`, no input. It returns the v1 guide as text: the allowed components with their descriptions (the official descriptions plus pigeon's notes), the limits, the JSON Schema for one node from `buildPresentParameters(pigeonLibrary)`, the sample trees, and the item types that already exist (from `types`, so Muse reuses `news` instead of inventing `daily-news`). Muse can read the rules when a task starts instead of carrying them all in its prompt.
 
-- **Server `instructions`** (sent at initialize): a short paragraph telling the client to call `get_ui_guide` before building a tree, to use only real URLs, and never to put historical prices in a `Chart`.
+- **Server `instructions`** (sent at initialize): a short paragraph telling the client to call `get_ui_guide` before building a tree, to use only real URLs, to leave url out when there is none and never invent one (amended 2026-11-23), and never to put historical prices in a `Chart`.
 - **Facts vs analysis:** the guide (and the Phase 4 prompts) tell Muse to keep what the sources say and its own analysis in separate blocks, with analysis in an `Alert` titled `Muse's take` (tone `info`). Sources don't need to be repeated as `Citation`s, since the page lists them.
 
 ## 10. REST API (web app)

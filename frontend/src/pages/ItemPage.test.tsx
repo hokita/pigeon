@@ -90,6 +90,28 @@ describe('ItemPage', () => {
     expect(footer).toHaveTextContent('Bad')
   })
 
+  it('shows no Sources footer when there are no sources', async () => {
+    const r = response()
+    r.item.content.sources = []
+    getItem.mockResolvedValue(r)
+    render(<ItemPage id={ID} navigate={navigate} />)
+    expect(await screen.findByTestId('item-meta')).toHaveTextContent('Written by Muse')
+    expect(screen.getByText('Tree header')).toBeInTheDocument()
+    expect(screen.queryByRole('contentinfo')).toBeNull()
+    expect(screen.queryByText('Sources')).toBeNull()
+  })
+
+  it('a source without a url is plain text', async () => {
+    const r = response()
+    r.item.content.sources = [{ title: 'Owner conversation', publisher: 'Chat' }]
+    getItem.mockResolvedValue(r)
+    render(<ItemPage id={ID} navigate={navigate} />)
+    const footer = await screen.findByRole('contentinfo')
+    expect(within(footer).queryByRole('link')).toBeNull()
+    expect(footer).toHaveTextContent('Owner conversation')
+    expect(footer).toHaveTextContent('Chat')
+  })
+
   it('frame and Sources show when ui is null', async () => {
     getItem.mockResolvedValue(response({ ui: null, uiStatus: 'invalid' }))
     render(<ItemPage id={ID} navigate={navigate} />)

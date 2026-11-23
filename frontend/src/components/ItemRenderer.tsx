@@ -8,6 +8,7 @@ import type { ItemResponse } from '../types'
 import { RenderBoundary } from './RenderBoundary'
 
 export const FALLBACK_NOTE = "Showing the saved content; the layout Muse sent couldn't be used."
+export const MISSING_NOTE = "Muse didn't send a layout for this item."
 
 type Props = { response: ItemResponse; library?: GenerativeUILibrary }
 
@@ -21,7 +22,7 @@ function Tree({ response, library = renderLibrary }: Props) {
     <>
       {(usedFallback || item.uiStatus !== 'valid') && (
         <p role="status" className="text-sm text-muted-foreground mb-4">
-          {FALLBACK_NOTE}
+          {item.uiStatus === 'missing' ? MISSING_NOTE : FALLBACK_NOTE}
         </p>
       )}
       {renderGenerativeUI(tree, library, { status: 'done' })}
@@ -34,7 +35,7 @@ export default function ItemRenderer({ response, library }: Props) {
     <PriceHistoryContext
       value={{ products: response.item.products, priceHistories: response.priceHistories }}
     >
-      <RenderBoundary markdown={response.item.content.markdown}>
+      <RenderBoundary markdown={response.item.content.markdown} title={response.item.title}>
         <Tree response={response} library={library} />
       </RenderBoundary>
     </PriceHistoryContext>

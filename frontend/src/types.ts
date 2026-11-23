@@ -28,7 +28,7 @@ export type FeedProduct = {
   change?: PriceChange
 }
 
-export type FeedSource = { title: string; url: string; publisher?: string; publishedAt?: string }
+export type FeedSource = { title: string; url?: string; publisher?: string; publishedAt?: string }
 
 export type StoredUi = { schemaVersion: number; root: unknown }
 
