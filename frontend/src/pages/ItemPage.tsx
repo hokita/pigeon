@@ -14,6 +14,7 @@ type State =
   | { status: 'ready'; data: ItemResponse }
 
 function Sources({ sources }: { sources: FeedSource[] }) {
+  if (sources.length === 0) return null
   return (
     <footer className="mt-10 border-t border-border pt-4">
       <h2 className="text-base font-semibold mt-0 mb-2">Sources</h2>

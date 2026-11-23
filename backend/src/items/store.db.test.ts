@@ -251,4 +251,20 @@ describe('saveFeedItem', () => {
     expect(p.lastPrice).toBe(32800)
     expect(p.firstObservedAt.toDate()).toEqual(new Date('2026-11-01T00:00:00Z'))
   })
+
+  it('saves an item with no sources and one without a url', async () => {
+    const none = loadFixture('sample-news')
+    none.dedupeKey = 'note:no-sources'
+    none.content.sources = []
+    const a = await save(none)
+    expect((await item(a.id)).content.sources).toEqual([])
+
+    const noUrl = loadFixture('sample-news')
+    noUrl.dedupeKey = 'note:no-url'
+    noUrl.content.sources = [{ title: 'Note' }]
+    const b = await save(noUrl)
+    const [source] = (await item(b.id)).content.sources
+    expect(source).toEqual({ title: 'Note' })
+    expect(Object.keys(source)).toEqual(['title'])
+  })
 })

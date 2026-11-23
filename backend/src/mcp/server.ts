@@ -10,7 +10,7 @@ import type { RateLimiter } from '../middleware/rateLimit.js'
 import { uiGuideText } from './guide.js'
 
 export const SERVER_INSTRUCTIONS =
-  'pigeon stores feed items for the owner. Always include a ui layout with every save_feed_item; call get_ui_guide once before building one. Use only URLs you actually visited. Never invent prices or past prices; use PriceHistory for price history. Save each item once with save_feed_item; saving again with the same dedupeKey updates it.'
+  'pigeon stores feed items for the owner. Always include a ui layout with every save_feed_item; call get_ui_guide once before building one. Use only URLs you actually visited; leave url out when there is none, and never invent one. Never invent prices or past prices; use PriceHistory for price history. Save each item once with save_feed_item; saving again with the same dedupeKey updates it.'
 
 export const MISSING_UI_HINT =
   'No layout sent; this item shows as plain text. Call get_ui_guide and save again with a ui.'

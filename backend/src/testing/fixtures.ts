@@ -5,7 +5,7 @@ export type FixtureName =
 
 export type FixtureSource = {
   title: string
-  url: string
+  url?: string
   publisher?: string
   publishedAt?: string
 }

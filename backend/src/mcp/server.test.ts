@@ -135,6 +135,34 @@ describe('pigeon MCP server', () => {
     expect(saveFeedItem).toHaveBeenCalledTimes(1)
   })
 
+  it('instructions keep the visited-URL rule and allow no url', () => {
+    expect(SERVER_INSTRUCTIONS).toContain(
+      'Use only URLs you actually visited; leave url out when there is none, and never invent one.'
+    )
+  })
+
+  it('sources and source url descriptions treat no URL as normal', async () => {
+    const { tools } = await (await connect()).listTools()
+    type Schema = { description?: string; properties?: Record<string, Schema>; items?: Schema }
+    const props = tools.find((t) => t.name === 'save_feed_item')!.inputSchema.properties as Record<
+      string,
+      Schema
+    >
+    const sources = props.content.properties!.sources
+    expect(sources.description).toMatch(/0 to 30/)
+    expect(sources.description).toMatch(/notes/)
+    expect(sources.items!.properties!.url.description).toMatch(/Leave it out/)
+  })
+
+  it('save_feed_item accepts an item with no sources', async () => {
+    const result = await save({
+      ...loadFixture('sample-news'),
+      content: { markdown: 'A note of my own.', sources: [] },
+    })
+    expect(result.isError).toBeFalsy()
+    expect(JSON.parse(textOf(result)).status).toBe('created')
+  })
+
   it('save_feed_item saves the news fixture', async () => {
     const result = await save(loadFixture('sample-news'))
     expect(result.isError).toBeFalsy()
@@ -216,6 +244,14 @@ describe('pigeon MCP server', () => {
     )
     expect(guide).toContain("You don't need Citation nodes: the page always lists content.sources.")
     expect(guide).toContain('Item types already in use: news, research.')
+    expect(guide).toContain(
+      'Use only URLs you actually visited; leave url out when there is none, and never invent one.'
+    )
+    expect(guide).toContain('- Images must be https.')
+    expect(guide).toContain(
+      "Items don't need sources: your own notes, findings and summaries can have none."
+    )
+    expect(guide).not.toContain('Use only URLs you actually visited. Images must be https.')
   })
 
   it('store failure is Internal error', async () => {

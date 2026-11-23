@@ -138,10 +138,41 @@ describe('parseFeedItemInput', () => {
     expect(parseFeedItemInput(raw, now).ok).toBe(true)
   })
 
-  it('rejects missing sources and an unknown top-level field', () => {
+  it('accepts zero sources', () => {
     const raw = loadFixture('sample-news')
     raw.content.sources = []
-    expect(error(raw)).toContain('content.sources')
+    expect(parsed(raw).value.content.sources).toEqual([])
+  })
+
+  it('defaults sources to [] when left out', () => {
+    const raw = loadFixture('sample-news')
+    const withoutSources = { ...raw, content: { markdown: raw.content.markdown } }
+    expect(parsed(withoutSources).value.content.sources).toEqual([])
+  })
+
+  it('accepts a source without a url', () => {
+    const raw = loadFixture('sample-news')
+    raw.content.sources = [{ title: 'Conversation with the owner' }]
+    const [source] = parsed(raw).value.content.sources
+    expect(source).toEqual({ title: 'Conversation with the owner' })
+    expect(source).not.toHaveProperty('url')
+  })
+
+  it.each(['javascript:alert(1)', ''])('still rejects the source url %j', (url) => {
+    const raw = loadFixture('sample-news')
+    raw.content.sources = [{ title: 'Bad', url }]
+    expect(error(raw)).toContain('content.sources.0.url')
+  })
+
+  it('products still need a url', () => {
+    const raw = loadFixture('sample-price-drop')
+    const withoutUrl = Object.fromEntries(
+      Object.entries(raw.products[0]).filter(([key]) => key !== 'url')
+    )
+    expect(error({ ...raw, products: [withoutUrl] })).toContain('products.0.url')
+  })
+
+  it('rejects an unknown top-level field', () => {
     expect(error({ ...loadFixture('sample-news'), extra: 1 })).toContain('extra')
   })
 

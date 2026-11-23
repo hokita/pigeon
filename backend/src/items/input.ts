@@ -54,10 +54,19 @@ export const saveFeedItemShape = {
       sources: z
         .array(
           z.strictObject({
-            title: z.string().trim().min(1).max(300).describe('Title of the page you used.'),
-            url: urlString(checkLinkUrl).describe(
-              'URL of the page you actually visited (http or https).'
-            ),
+            title: z
+              .string()
+              .trim()
+              .min(1)
+              .max(300)
+              .describe(
+                'Title of the source: a page, a document, a conversation or anything else you used.'
+              ),
+            url: urlString(checkLinkUrl)
+              .optional()
+              .describe(
+                'URL of the page you actually visited (http or https). Leave it out when the source has no URL; never invent one.'
+              ),
             publisher: z.string().trim().max(100).optional().describe('Site or publisher name.'),
             publishedAt: z
               .string()
@@ -66,11 +75,13 @@ export const saveFeedItemShape = {
               .describe('When the source was published, if known.'),
           })
         )
-        .min(1)
         .max(30)
-        .describe('Every page you used, 1 to 30. The page always lists them under Sources.'),
+        .default([])
+        .describe(
+          'What this item is based on, 0 to 30. Leave it empty for your own notes, findings or summaries. The page lists them under Sources.'
+        ),
     })
-    .describe('The item itself: your write-up and its sources.'),
+    .describe('The item itself: your write-up and its sources, if any.'),
   products: z
     .array(
       z.strictObject({
