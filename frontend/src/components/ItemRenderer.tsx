@@ -34,7 +34,7 @@ export default function ItemRenderer({ response, library }: Props) {
     <PriceHistoryContext
       value={{ products: response.item.products, priceHistories: response.priceHistories }}
     >
-      <RenderBoundary markdown={response.item.content.markdown}>
+      <RenderBoundary markdown={response.item.content.markdown} title={response.item.title}>
         <Tree response={response} library={library} />
       </RenderBoundary>
     </PriceHistoryContext>
