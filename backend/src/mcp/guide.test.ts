@@ -45,6 +45,10 @@ describe('get_ui_guide examples', () => {
     }
   })
 
+  it.each(examples)('the %s example makes no price-history claim in text', (_name, tree) => {
+    expect(JSON.stringify(tree)).not.toMatch(/lowest|highest|recorded price|all-time/i)
+  })
+
   it('the digest example has the digest shape', () => {
     const root = rootOf(GUIDE_EXAMPLES.digest)
     const top = childrenOf(root)

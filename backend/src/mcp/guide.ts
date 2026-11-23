@@ -80,7 +80,7 @@ export const GUIDE_EXAMPLES = {
               'Nov 13',
               'A 7B model that matches last year’s 30B models on reasoning',
             ],
-            ['Shopping', 'WH-2000', 'Nov 14', 'Down 17% to its lowest recorded price'],
+            ['Shopping', 'WH-2000', 'Nov 14', 'Down 17% from ¥39,600 at two shops'],
             ['Security', 'Kestrel Router', 'Nov 15', 'Firmware 2.4.1 fixes a remote login bug'],
           ],
         },
