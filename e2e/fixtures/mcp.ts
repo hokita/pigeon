@@ -62,6 +62,7 @@ export type SaveResult = {
   status: string
   uiStatus: string
   uiIssues?: unknown[]
+  hint?: string
   url: string
 }
 

@@ -16,7 +16,7 @@ vi.mock('../items/read.js', async (orig) => ({
 import { itemIdFor, saveFeedItem } from '../items/store.js'
 import { listTypes } from '../items/read.js'
 import { createRateLimiter, type RateLimiter } from '../middleware/rateLimit.js'
-import { createMcpRequestHandler, SERVER_INSTRUCTIONS } from './server.js'
+import { createMcpRequestHandler, MISSING_UI_HINT, SERVER_INSTRUCTIONS } from './server.js'
 import { ALLOWED_TYPES } from '../ui/library.js'
 import { loadFixture } from '../testing/fixtures.js'
 
@@ -94,6 +94,47 @@ describe('pigeon MCP server', () => {
     expect((await connect()).getInstructions()).toBe(SERVER_INSTRUCTIONS)
   })
 
+  it('instructions ask for a ui on every save', () => {
+    expect(SERVER_INSTRUCTIONS).toMatch(/always include a ui/i)
+    expect(SERVER_INSTRUCTIONS).toMatch(/get_ui_guide/)
+  })
+
+  it('save_feed_item description asks for a ui layout', async () => {
+    const { tools } = await (await connect()).listTools()
+    expect(tools.find((t) => t.name === 'save_feed_item')!.description).toMatch(
+      /always include a ui/i
+    )
+  })
+
+  it('ui field description asks for a layout', async () => {
+    const { tools } = await (await connect()).listTools()
+    const ui = (
+      tools.find((t) => t.name === 'save_feed_item')!.inputSchema.properties as Record<
+        string,
+        { description?: string }
+      >
+    ).ui
+    expect(ui.description).toMatch(/always include/i)
+    expect(ui.description).not.toMatch(/Optional/)
+  })
+
+  it('save_feed_item without ui saves and returns the hint', async () => {
+    const result = await save({ ...loadFixture('sample-news'), ui: undefined })
+    expect(result.isError).toBeFalsy()
+    const id = itemIdFor('news:daily-ai:2026-11-15')
+    expect(JSON.parse(textOf(result))).toEqual({
+      id,
+      status: 'created',
+      uiStatus: 'missing',
+      hint: MISSING_UI_HINT,
+      url: `${FRONTEND}/items/${id}`,
+    })
+    expect(MISSING_UI_HINT).toBe(
+      'No layout sent; this item shows as plain text. Call get_ui_guide and save again with a ui.'
+    )
+    expect(saveFeedItem).toHaveBeenCalledTimes(1)
+  })
+
   it('save_feed_item saves the news fixture', async () => {
     const result = await save(loadFixture('sample-news'))
     expect(result.isError).toBeFalsy()
@@ -113,6 +154,7 @@ describe('pigeon MCP server', () => {
     const body = JSON.parse(textOf(result))
     expect(body.uiStatus).toBe('invalid')
     expect(body.uiIssues[0].path).toMatch(/^root/)
+    expect(body.hint).toBeUndefined()
     expect(vi.mocked(saveFeedItem).mock.calls[0][1].status).toBe('invalid')
   })
 

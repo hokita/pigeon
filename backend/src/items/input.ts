@@ -101,7 +101,7 @@ export const saveFeedItemShape = {
     .unknown()
     .optional()
     .describe(
-      'How to show the item: { "schemaVersion": 1, "root": <one component node> }. Call get_ui_guide first for the components and limits. Optional; a tree that breaks the rules is reported back as uiIssues and the item is still saved.'
+      'How to show the item: { "schemaVersion": 1, "root": <one component node> }. Call get_ui_guide first for the components and limits. Always include it; a tree that breaks the rules is reported back as uiIssues and the item is still saved.'
     ),
 }
 

@@ -135,6 +135,9 @@ test('an item saved without a layout says so and shows the title once', async ({
   news.content.markdown = `# ${title}\n\nBody without a layout.`
   const saved = await saveItem(news, { title, dedupeKey: `news:missing-${RUN}`, ui: undefined })
   expect(saved.uiStatus).toBe('missing')
+  expect(saved.hint).toBe(
+    'No layout sent; this item shows as plain text. Call get_ui_guide and save again with a ui.'
+  )
   await signIn(page)
   await openItem(page, saved.url)
   await expect(page.getByText("Muse didn't send a layout for this item.")).toBeVisible()
