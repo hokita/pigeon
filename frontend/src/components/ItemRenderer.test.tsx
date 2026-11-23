@@ -7,6 +7,7 @@ import { loadFixture, type FixtureName } from '../testing/fixtures'
 import type { FeedItemDetail, ItemResponse } from '../types'
 
 const NOTE = "Showing the saved content; the layout Muse sent couldn't be used."
+const MISSING = "Muse didn't send a layout for this item."
 
 function response(fixture: FixtureName, overrides: Partial<FeedItemDetail> = {}): ItemResponse {
   const raw = loadFixture(fixture)
@@ -68,6 +69,19 @@ describe('ItemRenderer', () => {
       <ItemRenderer response={response('sample-news', { ui: { schemaVersion: 9, root: {} } })} />
     )
     expect(screen.getByText(NOTE)).toBeInTheDocument()
+    expect(screen.queryByText(MISSING)).toBeNull()
+  })
+
+  it('says Muse sent no layout when uiStatus is missing', () => {
+    render(<ItemRenderer response={response('sample-news', { ui: null, uiStatus: 'missing' })} />)
+    expect(screen.getByText(MISSING)).toBeInTheDocument()
+    expect(screen.queryByText(NOTE)).toBeNull()
+  })
+
+  it('keeps the fallback note when uiStatus is invalid', () => {
+    render(<ItemRenderer response={response('sample-news', { ui: null, uiStatus: 'invalid' })} />)
+    expect(screen.getByText(NOTE)).toBeInTheDocument()
+    expect(screen.queryByText(MISSING)).toBeNull()
   })
 
   it('replaces a bad stored node with a notice', () => {
