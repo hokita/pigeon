@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import { FeedCard } from '../components/FeedCard'
+import { PullIndicator } from '../pullToRefresh/PullIndicator'
+import { usePullToRefresh } from '../pullToRefresh/usePullToRefresh'
 import type { Route } from '../router'
 import type { FeedItemSummary, ItemType } from '../types'
 
@@ -24,6 +26,8 @@ export default function FeedPage({
   const [state, setState] = useState<State>({ status: 'loading' })
   const [types, setTypes] = useState<ItemType[]>([])
   const [loadingMore, setLoadingMore] = useState(false)
+  const [refreshFailed, setRefreshFailed] = useState(false)
+  const generation = useRef(0)
 
   const [attempt, setAttempt] = useState(0)
 
@@ -47,11 +51,33 @@ export default function FeedPage({
     api.listTypes().then(setTypes, () => setTypes([]))
   }, [])
 
+  async function refreshItems() {
+    const current = ++generation.current
+    try {
+      const page = await api.listItems(filterArgs(type))
+      if (current !== generation.current) return
+      setState({ status: 'ready', ...page })
+      setRefreshFailed(false)
+    } catch {
+      if (current === generation.current) setRefreshFailed(true)
+    }
+  }
+
+  const refreshTypes = () => api.listTypes().then(setTypes, () => undefined)
+
+  async function refresh() {
+    await Promise.all([refreshItems(), refreshTypes()])
+  }
+
+  const pull = usePullToRefresh(refresh)
+
   async function loadMore() {
     if (state.status !== 'ready' || !state.nextCursor) return
     setLoadingMore(true)
+    const current = generation.current
     try {
       const page = await api.listItems(filterArgs(type, state.nextCursor))
+      if (current !== generation.current) return
       setState({
         status: 'ready',
         items: [...state.items, ...page.items],
@@ -81,6 +107,7 @@ export default function FeedPage({
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-6">
+      <PullIndicator distance={pull.distance} refreshing={pull.refreshing} />
       <h1 className="text-2xl font-bold mt-0 mb-4">pigeon</h1>
       <nav aria-label="Filter by type" className="flex gap-2 overflow-x-auto pb-2 mb-4">
         {chip('All', undefined)}
@@ -93,6 +120,18 @@ export default function FeedPage({
           <button
             type="button"
             onClick={retry}
+            className="rounded-md border border-border px-4 py-2"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      {state.status === 'ready' && refreshFailed && (
+        <div role="alert" className="mb-4">
+          <p>Couldn&apos;t refresh the feed.</p>
+          <button
+            type="button"
+            onClick={pull.refresh}
             className="rounded-md border border-border px-4 py-2"
           >
             Retry

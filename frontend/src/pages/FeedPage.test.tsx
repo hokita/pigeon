@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
 import type { FeedItemSummary } from '../types'
 
 const { listItems, listTypes } = vi.hoisted(() => ({ listItems: vi.fn(), listTypes: vi.fn() }))
 vi.mock('../api', () => ({ api: { listItems, listTypes } }))
 
 import FeedPage from './FeedPage'
+import { pullDown } from '../testing/pull'
 
 const item = (id: string, over: Partial<FeedItemSummary> = {}): FeedItemSummary => ({
   id,
@@ -123,5 +124,119 @@ describe('FeedPage', () => {
     expect(await screen.findByText("Couldn't load the feed.")).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText('Title i_a')).toBeInTheDocument()
+  })
+})
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => undefined
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
+const types = (...names: string[]) =>
+  names.map((type) => ({ type, count: 1, lastItemAt: '2026-11-15T00:00:00.000Z' }))
+
+describe('FeedPage pull to refresh', () => {
+  it('refetches the first page with the same type and resets Load more', async () => {
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: 'c2' })
+      .mockResolvedValueOnce({ items: [item('i_b')], nextCursor: 'c3' })
+      .mockResolvedValueOnce({ items: [item('i_new'), item('i_a')], nextCursor: 'c9' })
+      .mockResolvedValueOnce({ items: [], nextCursor: null })
+    render(<FeedPage type="news" navigate={navigate} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Load more' }))
+    await screen.findByText('Title i_b')
+    pullDown(200)
+    await screen.findByText('Title i_new')
+    expect(listItems).toHaveBeenNthCalledWith(3, { type: 'news' })
+    expect(screen.queryByText('Title i_b')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }))
+    await waitFor(() => expect(listItems).toHaveBeenLastCalledWith({ type: 'news', cursor: 'c9' }))
+  })
+
+  it('keeps the current items on screen while refreshing', async () => {
+    const d = deferred<{ items: FeedItemSummary[]; nextCursor: string | null }>()
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: null })
+      .mockReturnValueOnce(d.promise)
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByText('Title i_a')
+    pullDown(200)
+    expect(screen.getByText('Title i_a')).toBeInTheDocument()
+    expect(screen.queryByText('Loading…')).toBeNull()
+    expect(screen.getByRole('status', { name: 'Refreshing' })).toBeInTheDocument()
+    d.resolve({ items: [item('i_new')], nextCursor: null })
+    await screen.findByText('Title i_new')
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+  })
+
+  it('a failed refresh keeps the items and offers Retry', async () => {
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: null })
+      .mockRejectedValueOnce(new Error('x'))
+      .mockResolvedValueOnce({ items: [item('i_new')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByText('Title i_a')
+    pullDown(200)
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't refresh the feed.")
+    expect(screen.getByText('Title i_a')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await screen.findByText('Title i_new')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a pull also refetches the type list so a new type chip appears', async () => {
+    listTypes.mockReset()
+    listTypes.mockResolvedValueOnce(types('news')).mockResolvedValueOnce(types('news', 'research'))
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByRole('button', { name: 'news' })
+    expect(screen.queryByRole('button', { name: 'research' })).toBeNull()
+    pullDown(200)
+    await screen.findByRole('button', { name: 'research' })
+    expect(listTypes).toHaveBeenCalledTimes(2)
+  })
+
+  it('a failed type list refetch keeps the current chips and shows no error', async () => {
+    listTypes.mockReset()
+    listTypes.mockResolvedValueOnce(types('news')).mockRejectedValueOnce(new Error('x'))
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: null })
+      .mockResolvedValueOnce({ items: [item('i_new')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByRole('button', { name: 'news' })
+    pullDown(200)
+    await screen.findByText('Title i_new')
+    await waitFor(() => expect(listTypes).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+    expect(screen.getByRole('button', { name: 'news' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a pull after a failed first load shows the feed', async () => {
+    listItems.mockRejectedValueOnce(new Error('x'))
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByText("Couldn't load the feed.")
+    pullDown(200)
+    expect(await screen.findByText('Title i_a')).toBeInTheDocument()
+  })
+
+  it('a Load more that finishes after a refresh is dropped', async () => {
+    const d = deferred<{ items: FeedItemSummary[]; nextCursor: string | null }>()
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: 'c2' })
+      .mockReturnValueOnce(d.promise)
+      .mockResolvedValueOnce({ items: [item('i_new')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Load more' }))
+    pullDown(200)
+    await screen.findByText('Title i_new')
+    d.resolve({ items: [item('i_old2')], nextCursor: 'c3' })
+    await act(async () => {
+      await d.promise
+    })
+    expect(screen.queryByText('Title i_old2')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull()
   })
 })
