@@ -3,6 +3,8 @@ import { api } from '../api'
 import ItemRenderer from '../components/ItemRenderer'
 import { TypeBadge } from '../components/FeedCard'
 import { formatDate } from '../format'
+import { PullIndicator } from '../pullToRefresh/PullIndicator'
+import { usePullToRefresh } from '../pullToRefresh/usePullToRefresh'
 import { safeLinkUrl } from '../generative-ui/safeUrl'
 import type { Route } from '../router'
 import type { FeedSource, ItemResponse } from '../types'
@@ -53,6 +55,7 @@ export default function ItemPage({
 }) {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  const [refreshFailed, setRefreshFailed] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -65,6 +68,18 @@ export default function ItemPage({
     }
   }, [id, attempt])
 
+  async function refresh() {
+    try {
+      const data = await api.getItem(id)
+      setState(data ? { status: 'ready', data } : { status: 'missing' })
+      setRefreshFailed(false)
+    } catch {
+      setRefreshFailed(true)
+    }
+  }
+
+  const pull = usePullToRefresh(refresh)
+
   useEffect(() => {
     if (state.status === 'ready') document.title = `${state.data.item.title} · pigeon`
   }, [state])
@@ -76,9 +91,22 @@ export default function ItemPage({
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-6">
+      <PullIndicator distance={pull.distance} refreshing={pull.refreshing} />
       <a href="/" onClick={back} className="text-sm text-muted-foreground no-underline">
         ← Feed
       </a>
+      {state.status === 'ready' && refreshFailed && (
+        <div role="alert" className="mt-4">
+          <p>Couldn&apos;t refresh this item.</p>
+          <button
+            type="button"
+            onClick={pull.refresh}
+            className="rounded-md border border-border px-4 py-2"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {state.status === 'loading' && <p className="text-muted-foreground">Loading…</p>}
       {state.status === 'missing' && <p>This item doesn&apos;t exist.</p>}
       {state.status === 'error' && (

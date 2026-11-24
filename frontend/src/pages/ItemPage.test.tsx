@@ -6,6 +6,7 @@ const { getItem } = vi.hoisted(() => ({ getItem: vi.fn() }))
 vi.mock('../api', () => ({ api: { getItem } }))
 
 import ItemPage from './ItemPage'
+import { pullDown } from '../testing/pull'
 
 const ID = 'i_0123456789abcdef0123'
 const navigate = vi.fn()
@@ -147,5 +148,66 @@ describe('ItemPage', () => {
     render(<ItemPage id={ID} navigate={navigate} />)
     fireEvent.click(await screen.findByRole('link', { name: '← Feed' }))
     expect(navigate).toHaveBeenCalledWith({ page: 'feed' })
+  })
+})
+
+function deferred<T>() {
+  let resolve: (value: T) => void = () => undefined
+  const promise = new Promise<T>((r) => {
+    resolve = r
+  })
+  return { promise, resolve }
+}
+
+describe('ItemPage pull to refresh', () => {
+  it('a pull refetches the item and shows the new version', async () => {
+    getItem
+      .mockResolvedValueOnce(response())
+      .mockResolvedValueOnce(response({ title: 'Heat pumps v2' }))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    await screen.findByText('Tree header')
+    pullDown(200)
+    expect(
+      await screen.findByRole('heading', { level: 1, name: 'Heat pumps v2' })
+    ).toBeInTheDocument()
+    expect(getItem).toHaveBeenCalledTimes(2)
+    await waitFor(() => expect(document.title).toBe('Heat pumps v2 · pigeon'))
+  })
+
+  it('keeps the item on screen while refreshing', async () => {
+    const d = deferred<ItemResponse | null>()
+    getItem.mockResolvedValueOnce(response()).mockReturnValueOnce(d.promise)
+    render(<ItemPage id={ID} navigate={navigate} />)
+    await screen.findByText('Tree header')
+    pullDown(200)
+    expect(screen.getByRole('heading', { level: 1, name: 'Heat pumps' })).toBeInTheDocument()
+    expect(screen.queryByText('Loading…')).toBeNull()
+    expect(screen.getByRole('status', { name: 'Refreshing' })).toBeInTheDocument()
+    d.resolve(response())
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+  })
+
+  it('a failed refresh keeps the item and offers Retry', async () => {
+    getItem
+      .mockResolvedValueOnce(response())
+      .mockRejectedValueOnce(new Error('x'))
+      .mockResolvedValueOnce(response({ title: 'Heat pumps v2' }))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    await screen.findByText('Tree header')
+    pullDown(200)
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't refresh this item.")
+    expect(screen.getByRole('heading', { level: 1, name: 'Heat pumps' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await screen.findByRole('heading', { level: 1, name: 'Heat pumps v2' })
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a refresh that finds the item deleted shows the missing message', async () => {
+    getItem.mockResolvedValueOnce(response()).mockResolvedValueOnce(null)
+    render(<ItemPage id={ID} navigate={navigate} />)
+    await screen.findByText('Tree header')
+    pullDown(200)
+    expect(await screen.findByText("This item doesn't exist.")).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
   })
 })
