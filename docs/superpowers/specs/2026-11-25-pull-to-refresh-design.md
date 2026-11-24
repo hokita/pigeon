@@ -11,6 +11,7 @@ The owner opens pigeon from an iPhone home-screen icon. It runs as a full-screen
 - **Feed:** pull down while the page is scrolled to the top. Past a short threshold a spinner shows, then the first page of items is fetched again.
   - The selected type filter is kept.
   - The "Load more" cursor resets to the first page.
+  - The type list (filter chips) is fetched again too, so a chip for a new type shows right away. If that fetch fails, the current chips stay. (Added by the owner on 2026-11-25 when approving the plan.)
 - **Item page:** the same pull fetches that item again.
 - **While loading:** the current content stays on screen (no blank flash).
 - **On failure:** the old content stays, with a short error message and a Retry button.

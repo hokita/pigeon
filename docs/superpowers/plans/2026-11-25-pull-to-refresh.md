@@ -21,6 +21,7 @@
   - Feed error: `Couldn't refresh the feed.` with a `Retry` button.
   - Item error: `Couldn't refresh this item.` with a `Retry` button.
 - Feed refresh: same `type`, no `cursor`, and the result replaces the list and `nextCursor`.
+- Feed refresh also calls `api.listTypes()` and replaces the chips. If it fails, the current chips stay, and only an items failure shows the refresh error.
 - Not included: auto-refresh on visibility or focus, a desktop refresh button.
 - Tools: the repo's Node through the Volta pin and npm scripts. `npx` only for binaries already in the repo's `node_modules` (`tsc`, `playwright`). No global installs.
 - No secrets, project IDs, emails or real item data in code, tests or commits. e2e uses `fixtures/*.json` and the `demo-pigeon-e2e` emulator project.
@@ -261,6 +262,13 @@ it('a failed refresh keeps the items and offers Retry')
   // second call rejects; pullDown(200)
   // findByRole('alert') has text "Couldn't refresh the feed."; getByText('Title i_a') present
   // third call resolves [i_new]; click Retry -> findByText('Title i_new'); queryByRole('alert') null
+it('a pull also refetches the type list so a new type chip appears')
+  // listTypes: once [news], once [news, research]; render; findByRole('button', { name: 'news' })
+  // queryByRole('button', { name: 'research' }) null; pullDown(200)
+  // findByRole('button', { name: 'research' }); expect(listTypes).toHaveBeenCalledTimes(2)
+it('a failed type list refetch keeps the current chips and shows no error')
+  // listTypes: once [news], then rejects; pullDown(200); findByText('Title i_new') (items succeed)
+  // getByRole('button', { name: 'news' }) present; queryByRole('alert') null
 it('a pull after a failed first load shows the feed')
   // first call rejects -> findByText("Couldn't load the feed."); pullDown(200) -> findByText('Title i_a')
 it('a Load more that finishes after a refresh is dropped')
@@ -284,6 +292,7 @@ In `FeedPage`:
   - Calls `api.listItems(filterArgs(type))`.
   - On success, if this is still the latest generation: `setState({ status: 'ready', ...page })` and `setRefreshFailed(false)`.
   - On failure: `setRefreshFailed(true)`. It never rejects.
+  - In parallel, it calls `api.listTypes()`: `setTypes` on success; on failure the current chips stay. `refresh` resolves only after both settle, so the spinner covers both.
 - `loadMore` saves `generation.current` before its request and drops the result if the value has changed.
 - `const pull = usePullToRefresh(refresh)`. Render `<PullIndicator distance={pull.distance} refreshing={pull.refreshing} />` inside `<main>`.
 - When `state.status === 'ready' && refreshFailed`, render above the list a `role="alert"` block with the copy from Global Constraints and a `Retry` button whose `onClick={pull.refresh}`. It uses the same classes as the existing error block.
