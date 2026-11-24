@@ -32,14 +32,11 @@ export default function FeedPage({
   const [attempt, setAttempt] = useState(0)
 
   useEffect(() => {
-    let active = true
+    const current = ++generation.current
     api.listItems(filterArgs(type)).then(
-      (page) => active && setState({ status: 'ready', ...page }),
-      () => active && setState({ status: 'error' })
+      (page) => current === generation.current && setState({ status: 'ready', ...page }),
+      () => current === generation.current && setState({ status: 'error' })
     )
-    return () => {
-      active = false
-    }
   }, [type, attempt])
 
   function retry() {
@@ -59,7 +56,9 @@ export default function FeedPage({
       setState({ status: 'ready', ...page })
       setRefreshFailed(false)
     } catch {
-      if (current === generation.current) setRefreshFailed(true)
+      if (current !== generation.current) return
+      setRefreshFailed(true)
+      setState((s) => (s.status === 'loading' ? { status: 'error' } : s))
     }
   }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, within, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import type { ItemResponse } from '../types'
 
 const { getItem } = vi.hoisted(() => ({ getItem: vi.fn() }))
@@ -153,10 +153,18 @@ describe('ItemPage', () => {
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => undefined
-  const promise = new Promise<T>((r) => {
-    resolve = r
+  let reject: (reason: Error) => void = () => undefined
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
   })
-  return { promise, resolve }
+  return { promise, resolve, reject }
+}
+
+async function settle(promise: Promise<unknown>) {
+  await act(async () => {
+    await promise.catch(() => undefined)
+  })
 }
 
 describe('ItemPage pull to refresh', () => {
@@ -208,6 +216,62 @@ describe('ItemPage pull to refresh', () => {
     await screen.findByText('Tree header')
     pullDown(200)
     expect(await screen.findByText("This item doesn't exist.")).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
+  })
+})
+
+describe('ItemPage pull during the first load or a Retry', () => {
+  it('a late first-load failure does not replace the refreshed item', async () => {
+    const first = deferred<ItemResponse | null>()
+    getItem
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValueOnce(response({ title: 'Heat pumps v2' }))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    pullDown(200)
+    await screen.findByRole('heading', { level: 1, name: 'Heat pumps v2' })
+    first.reject(new Error('x'))
+    await settle(first.promise)
+    expect(screen.getByRole('heading', { level: 1, name: 'Heat pumps v2' })).toBeInTheDocument()
+    expect(screen.queryByText("Couldn't load this item.")).toBeNull()
+  })
+
+  it('a late first-load success does not restore the stale item', async () => {
+    const first = deferred<ItemResponse | null>()
+    getItem
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValueOnce(response({ title: 'Heat pumps v2' }))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    pullDown(200)
+    await screen.findByRole('heading', { level: 1, name: 'Heat pumps v2' })
+    first.resolve(response())
+    await settle(first.promise)
+    expect(screen.getByRole('heading', { level: 1, name: 'Heat pumps v2' })).toBeInTheDocument()
+  })
+
+  it('a late Retry failure does not replace the refreshed item', async () => {
+    const retried = deferred<ItemResponse | null>()
+    getItem
+      .mockRejectedValueOnce(new Error('x'))
+      .mockReturnValueOnce(retried.promise)
+      .mockResolvedValueOnce(response({ title: 'Heat pumps v2' }))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }))
+    pullDown(200)
+    await screen.findByRole('heading', { level: 1, name: 'Heat pumps v2' })
+    retried.reject(new Error('x'))
+    await settle(retried.promise)
+    expect(screen.getByRole('heading', { level: 1, name: 'Heat pumps v2' })).toBeInTheDocument()
+    expect(screen.queryByText("Couldn't load this item.")).toBeNull()
+  })
+
+  it('a failed pull during the first load shows the load error instead of loading forever', async () => {
+    const first = deferred<ItemResponse | null>()
+    getItem.mockReturnValueOnce(first.promise).mockRejectedValueOnce(new Error('x'))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    pullDown(200)
+    expect(await screen.findByText("Couldn't load this item.")).toBeInTheDocument()
+    first.resolve(response())
+    await settle(first.promise)
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
   })
 })

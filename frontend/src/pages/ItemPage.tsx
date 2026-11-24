@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { api } from '../api'
 import ItemRenderer from '../components/ItemRenderer'
 import { TypeBadge } from '../components/FeedCard'
@@ -14,6 +14,9 @@ type State =
   | { status: 'error' }
   | { status: 'missing' }
   | { status: 'ready'; data: ItemResponse }
+
+const show = (data: ItemResponse | null): State =>
+  data ? { status: 'ready', data } : { status: 'missing' }
 
 function Sources({ sources }: { sources: FeedSource[] }) {
   if (sources.length === 0) return null
@@ -56,25 +59,27 @@ export default function ItemPage({
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
   const [refreshFailed, setRefreshFailed] = useState(false)
+  const generation = useRef(0)
 
   useEffect(() => {
-    let active = true
+    const current = ++generation.current
     api.getItem(id).then(
-      (data) => active && setState(data ? { status: 'ready', data } : { status: 'missing' }),
-      () => active && setState({ status: 'error' })
+      (data) => current === generation.current && setState(show(data)),
+      () => current === generation.current && setState({ status: 'error' })
     )
-    return () => {
-      active = false
-    }
   }, [id, attempt])
 
   async function refresh() {
+    const current = ++generation.current
     try {
       const data = await api.getItem(id)
-      setState(data ? { status: 'ready', data } : { status: 'missing' })
+      if (current !== generation.current) return
+      setState(show(data))
       setRefreshFailed(false)
     } catch {
+      if (current !== generation.current) return
       setRefreshFailed(true)
+      setState((s) => (s.status === 'loading' ? { status: 'error' } : s))
     }
   }
 

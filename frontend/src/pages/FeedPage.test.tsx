@@ -129,10 +129,18 @@ describe('FeedPage', () => {
 
 function deferred<T>() {
   let resolve: (value: T) => void = () => undefined
-  const promise = new Promise<T>((r) => {
-    resolve = r
+  let reject: (reason: Error) => void = () => undefined
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
   })
-  return { promise, resolve }
+  return { promise, resolve, reject }
+}
+
+async function settle(promise: Promise<unknown>) {
+  await act(async () => {
+    await promise.catch(() => undefined)
+  })
 }
 
 const types = (...names: string[]) =>
@@ -257,9 +265,7 @@ describe('FeedPage pull to refresh', () => {
     pullDown(200)
     await screen.findByText('Title i_new')
     reject(new Error('x'))
-    await act(async () => {
-      await pending.catch(() => undefined)
-    })
+    await settle(pending)
     expect(screen.getByText('Title i_new')).toBeInTheDocument()
     expect(screen.queryByText("Couldn't load the feed.")).toBeNull()
   })
@@ -275,10 +281,67 @@ describe('FeedPage pull to refresh', () => {
     pullDown(200)
     await screen.findByText('Title i_new')
     d.resolve({ items: [item('i_old2')], nextCursor: 'c3' })
-    await act(async () => {
-      await d.promise
-    })
+    await settle(d.promise)
     expect(screen.queryByText('Title i_old2')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull()
+  })
+})
+
+describe('FeedPage pull during the first load or a Retry', () => {
+  type Page = { items: FeedItemSummary[]; nextCursor: string | null }
+
+  it('a late first-load failure does not replace the refreshed feed', async () => {
+    const first = deferred<Page>()
+    listItems
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValueOnce({ items: [item('i_new')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    pullDown(200)
+    await screen.findByText('Title i_new')
+    first.reject(new Error('x'))
+    await settle(first.promise)
+    expect(screen.getByText('Title i_new')).toBeInTheDocument()
+    expect(screen.queryByText("Couldn't load the feed.")).toBeNull()
+  })
+
+  it('a late first-load success does not restore stale items', async () => {
+    const first = deferred<Page>()
+    listItems
+      .mockReturnValueOnce(first.promise)
+      .mockResolvedValueOnce({ items: [item('i_new')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    pullDown(200)
+    await screen.findByText('Title i_new')
+    first.resolve({ items: [item('i_old')], nextCursor: null })
+    await settle(first.promise)
+    expect(screen.getByText('Title i_new')).toBeInTheDocument()
+    expect(screen.queryByText('Title i_old')).toBeNull()
+  })
+
+  it('a late Retry failure does not replace the refreshed feed', async () => {
+    const retried = deferred<Page>()
+    listItems
+      .mockRejectedValueOnce(new Error('x'))
+      .mockReturnValueOnce(retried.promise)
+      .mockResolvedValueOnce({ items: [item('i_new')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry' }))
+    pullDown(200)
+    await screen.findByText('Title i_new')
+    retried.reject(new Error('x'))
+    await settle(retried.promise)
+    expect(screen.getByText('Title i_new')).toBeInTheDocument()
+    expect(screen.queryByText("Couldn't load the feed.")).toBeNull()
+  })
+
+  it('a failed pull during the first load shows the load error instead of loading forever', async () => {
+    const first = deferred<Page>()
+    listItems.mockReturnValueOnce(first.promise).mockRejectedValueOnce(new Error('x'))
+    render(<FeedPage navigate={navigate} />)
+    pullDown(200)
+    expect(await screen.findByText("Couldn't load the feed.")).toBeInTheDocument()
+    first.resolve({ items: [item('i_old')], nextCursor: null })
+    await settle(first.promise)
+    expect(screen.queryByText('Title i_old')).toBeNull()
   })
 })
