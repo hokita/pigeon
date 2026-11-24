@@ -222,6 +222,27 @@ describe('FeedPage pull to refresh', () => {
     expect(await screen.findByText('Title i_a')).toBeInTheDocument()
   })
 
+  it('Load more is blocked while a refresh is pending', async () => {
+    const d = deferred<{ items: FeedItemSummary[]; nextCursor: string | null }>()
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: 'c2' })
+      .mockReturnValueOnce(d.promise)
+      .mockResolvedValueOnce({ items: [item('i_next')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    const more = await screen.findByRole('button', { name: 'Load more' })
+    pullDown(200)
+    expect(more).toBeDisabled()
+    fireEvent.click(more)
+    expect(listItems).toHaveBeenCalledTimes(2)
+    d.resolve({ items: [item('i_new')], nextCursor: 'c9' })
+    await screen.findByText('Title i_new')
+    expect(screen.queryByText('Title i_a')).toBeNull()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Load more' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }))
+    await screen.findByText('Title i_next')
+    expect(listItems).toHaveBeenLastCalledWith({ cursor: 'c9' })
+  })
+
   it('a Load more that fails after a refresh keeps the refreshed feed', async () => {
     let reject: (reason: Error) => void = () => undefined
     const pending = new Promise<never>((_, r) => {

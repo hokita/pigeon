@@ -152,7 +152,7 @@ export default function FeedPage({
         <button
           type="button"
           onClick={loadMore}
-          disabled={loadingMore}
+          disabled={loadingMore || pull.refreshing}
           className="mt-4 w-full rounded-md border border-border px-4 py-2"
         >
           Load more
