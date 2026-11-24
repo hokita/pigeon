@@ -222,6 +222,27 @@ describe('FeedPage pull to refresh', () => {
     expect(await screen.findByText('Title i_a')).toBeInTheDocument()
   })
 
+  it('a Load more that fails after a refresh keeps the refreshed feed', async () => {
+    let reject: (reason: Error) => void = () => undefined
+    const pending = new Promise<never>((_, r) => {
+      reject = r
+    })
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: 'c2' })
+      .mockReturnValueOnce(pending)
+      .mockResolvedValueOnce({ items: [item('i_new')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Load more' }))
+    pullDown(200)
+    await screen.findByText('Title i_new')
+    reject(new Error('x'))
+    await act(async () => {
+      await pending.catch(() => undefined)
+    })
+    expect(screen.getByText('Title i_new')).toBeInTheDocument()
+    expect(screen.queryByText("Couldn't load the feed.")).toBeNull()
+  })
+
   it('a Load more that finishes after a refresh is dropped', async () => {
     const d = deferred<{ items: FeedItemSummary[]; nextCursor: string | null }>()
     listItems

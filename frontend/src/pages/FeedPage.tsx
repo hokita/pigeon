@@ -84,7 +84,7 @@ export default function FeedPage({
         nextCursor: page.nextCursor,
       })
     } catch {
-      setState({ status: 'error' })
+      if (current === generation.current) setState({ status: 'error' })
     } finally {
       setLoadingMore(false)
     }
