@@ -28,6 +28,7 @@ export default function FeedPage({
   const [loadingMore, setLoadingMore] = useState(false)
   const [refreshFailed, setRefreshFailed] = useState(false)
   const generation = useRef(0)
+  const typesGeneration = useRef(0)
 
   const [attempt, setAttempt] = useState(0)
 
@@ -45,7 +46,11 @@ export default function FeedPage({
   }
 
   useEffect(() => {
-    api.listTypes().then(setTypes, () => setTypes([]))
+    const current = ++typesGeneration.current
+    api.listTypes().then(
+      (next) => current === typesGeneration.current && setTypes(next),
+      () => current === typesGeneration.current && setTypes([])
+    )
   }, [])
 
   async function refreshItems() {
@@ -62,7 +67,13 @@ export default function FeedPage({
     }
   }
 
-  const refreshTypes = () => api.listTypes().then(setTypes, () => undefined)
+  function refreshTypes() {
+    const current = ++typesGeneration.current
+    return api.listTypes().then(
+      (next) => current === typesGeneration.current && setTypes(next),
+      () => undefined
+    )
+  }
 
   async function refresh() {
     await Promise.all([refreshItems(), refreshTypes()])

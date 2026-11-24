@@ -345,3 +345,33 @@ describe('FeedPage pull during the first load or a Retry', () => {
     expect(screen.queryByText('Title i_old')).toBeNull()
   })
 })
+
+describe('FeedPage pull during the first type list load', () => {
+  type Types = ReturnType<typeof types>
+
+  it('a late first type-list success does not replace the refreshed chips', async () => {
+    const first = deferred<Types>()
+    listTypes.mockReturnValueOnce(first.promise).mockResolvedValueOnce(types('news', 'research'))
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByText('Title i_a')
+    pullDown(200)
+    await screen.findByRole('button', { name: 'research' })
+    first.resolve(types('stale'))
+    await settle(first.promise)
+    expect(screen.getByRole('button', { name: 'research' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'stale' })).toBeNull()
+  })
+
+  it('a late first type-list failure does not clear the refreshed chips', async () => {
+    const first = deferred<Types>()
+    listTypes.mockReturnValueOnce(first.promise).mockResolvedValueOnce(types('news', 'research'))
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByText('Title i_a')
+    pullDown(200)
+    await screen.findByRole('button', { name: 'research' })
+    first.reject(new Error('x'))
+    await settle(first.promise)
+    expect(screen.getByRole('button', { name: 'research' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'news' })).toBeInTheDocument()
+  })
+})
