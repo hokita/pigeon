@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
-import { getFirestore } from 'firebase-admin/firestore'
+import { FieldValue, getFirestore } from 'firebase-admin/firestore'
 import { decodeCursor, encodeCursor, getItem, listItems, listTypes } from './read.js'
-import { saveFeedItem } from './store.js'
+import { markItemRead, saveFeedItem } from './store.js'
 import { parseFeedItemInput } from './input.js'
 import { loadFixture } from '../testing/fixtures.js'
 
@@ -37,6 +37,7 @@ describe('listItems', () => {
       summary: loadFixture('sample-news').summary,
       createdAt: expect.stringMatching(/^2\d{3}-/),
       publishedAt: '2026-11-14T15:00:00.000Z',
+      unread: true,
       products: [],
     })
   })
@@ -154,5 +155,27 @@ describe('getItem', () => {
     const h = async (id: string) => Object.values((await getItem(id))!.priceHistories)[0]
     expect(await h(day2.id)).toHaveLength(2)
     expect(await h(day3.id)).toHaveLength(3)
+  })
+})
+
+describe('unread', () => {
+  it('listItems and getItem report a new item as unread', async () => {
+    const { id } = await save(loadFixture('sample-news'))
+    expect((await listItems({ limit: 20 })).items[0]).toMatchObject({ id, unread: true })
+    expect((await getItem(id))!.item.unread).toBe(true)
+  })
+
+  it('a read item reports unread false', async () => {
+    const { id } = await save(loadFixture('sample-news'))
+    await markItemRead(id)
+    expect((await listItems({ limit: 20 })).items[0].unread).toBe(false)
+    expect((await getItem(id))!.item.unread).toBe(false)
+  })
+
+  it('an item saved before the field existed reports unread false', async () => {
+    const { id } = await save(loadFixture('sample-news'))
+    await getFirestore().doc(`items/${id}`).update({ unread: FieldValue.delete() })
+    expect((await listItems({ limit: 20 })).items[0].unread).toBe(false)
+    expect((await getItem(id))!.item.unread).toBe(false)
   })
 })
