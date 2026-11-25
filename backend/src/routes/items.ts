@@ -1,5 +1,6 @@
 import { Router, type Request, type RequestHandler, type Response } from 'express'
 import { decodeCursor, getItem, listItems, listTypes } from '../items/read.js'
+import { markItemRead } from '../items/store.js'
 
 const TYPE_PATTERN = /^[a-z][a-z0-9-]{0,31}$/
 const ID_PATTERN = /^i_[0-9a-f]{20}$/
@@ -65,6 +66,18 @@ export function createItemsRouter({ userAuth }: { userAuth: RequestHandler }): R
         return
       }
       res.json(found)
+    })
+  )
+  router.post(
+    '/:id/read',
+    guarded(async (req, res) => {
+      const id = String(req.params.id)
+      const marked = ID_PATTERN.test(id) && (await markItemRead(id))
+      if (!marked) {
+        res.status(404).json({ error: 'Not found' })
+        return
+      }
+      res.status(204).end()
     })
   )
   return router

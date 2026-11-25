@@ -11,6 +11,10 @@ vi.mock('../items/read.js', async (orig) => ({
   listTypes: (...a: unknown[]) => listTypes(...a),
   getItem: (...a: unknown[]) => getItem(...a),
 }))
+const markItemRead = vi.fn()
+vi.mock('../items/store.js', () => ({
+  markItemRead: (...a: unknown[]) => markItemRead(...a),
+}))
 
 import { createItemsRouter, createTypesRouter } from './items.js'
 import { encodeCursor } from '../items/read.js'
@@ -35,6 +39,30 @@ describe('items router', () => {
     listTypes.mockResolvedValue([
       { type: 'news', count: 1, lastItemAt: '2026-11-15T00:00:00.000Z' },
     ])
+    markItemRead.mockResolvedValue(true)
+  })
+
+  it('POST /:id/read marks the item read', async () => {
+    const res = await request(app()).post(`/api/items/${ID}/read`)
+    expect(res.status).toBe(204)
+    expect(markItemRead).toHaveBeenCalledWith(ID)
+  })
+
+  it('POST /:id/read is 404 for an unknown item', async () => {
+    markItemRead.mockResolvedValue(false)
+    const res = await request(app()).post(`/api/items/${ID}/read`)
+    expect(res.status).toBe(404)
+    expect(res.body).toEqual({ error: 'Not found' })
+  })
+
+  it('POST /:id/read with an invalid id is 404 without a write', async () => {
+    expect((await request(app()).post('/api/items/bad-id/read')).status).toBe(404)
+    expect(markItemRead).not.toHaveBeenCalled()
+  })
+
+  it('GET /:id/read is not a way to mark an item read', async () => {
+    await request(app()).get(`/api/items/${ID}/read`)
+    expect(markItemRead).not.toHaveBeenCalled()
   })
 
   it('GET / passes type, limit and cursor', async () => {
@@ -103,6 +131,8 @@ describe('items router', () => {
     expect((await request(a).get('/api/items')).status).toBe(401)
     expect((await request(a).get(`/api/items/${ID}`)).status).toBe(401)
     expect((await request(a).get('/api/types')).status).toBe(401)
+    expect((await request(a).post(`/api/items/${ID}/read`)).status).toBe(401)
+    expect(markItemRead).not.toHaveBeenCalled()
     expect(listItems).not.toHaveBeenCalled()
     expect(getItem).not.toHaveBeenCalled()
     expect(listTypes).not.toHaveBeenCalled()

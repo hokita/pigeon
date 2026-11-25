@@ -111,4 +111,13 @@ describe('app', () => {
     const good = await request(app()).get('/health').set('Origin', 'http://localhost:5190')
     expect(good.headers['access-control-allow-origin']).toBe('http://localhost:5190')
   })
+
+  it('CORS preflight allows POST to mark an item read', async () => {
+    const res = await request(app())
+      .options('/api/items/i_0123456789abcdef0123/read')
+      .set('Origin', 'http://localhost:5190')
+      .set('Access-Control-Request-Method', 'POST')
+    expect(res.status).toBe(204)
+    expect(res.headers['access-control-allow-methods']).toContain('POST')
+  })
 })
