@@ -35,7 +35,11 @@ export default function FeedPage({
   useEffect(() => {
     const current = ++generation.current
     api.listItems(filterArgs(type)).then(
-      (page) => current === generation.current && setState({ status: 'ready', ...page }),
+      (page) => {
+        if (current !== generation.current) return
+        setState({ status: 'ready', ...page })
+        setRefreshFailed(false)
+      },
       () => current === generation.current && setState({ status: 'error' })
     )
   }, [type, attempt])
@@ -55,6 +59,7 @@ export default function FeedPage({
 
   async function refreshItems() {
     const current = ++generation.current
+    setLoadingMore(false)
     try {
       const page = await api.listItems(filterArgs(type))
       if (current !== generation.current) return
@@ -96,7 +101,7 @@ export default function FeedPage({
     } catch {
       if (current === generation.current) setState({ status: 'error' })
     } finally {
-      setLoadingMore(false)
+      if (current === generation.current) setLoadingMore(false)
     }
   }
 

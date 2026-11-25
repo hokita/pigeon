@@ -275,3 +275,34 @@ describe('ItemPage pull during the first load or a Retry', () => {
     expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
   })
 })
+
+describe('ItemPage flags after a newer request succeeds', () => {
+  it('a successful Retry clears a refresh error from a pull that failed during the load error', async () => {
+    getItem
+      .mockRejectedValueOnce(new Error('x'))
+      .mockRejectedValueOnce(new Error('x'))
+      .mockResolvedValueOnce(response())
+    render(<ItemPage id={ID} navigate={navigate} />)
+    await screen.findByText("Couldn't load this item.")
+    pullDown(200)
+    await waitFor(() => expect(getItem).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await screen.findByRole('heading', { level: 1, name: 'Heat pumps' })
+    expect(screen.queryByText("Couldn't refresh this item.")).toBeNull()
+  })
+
+  it('a successful Retry clears a refresh error from a pull that failed during the first load', async () => {
+    const first = deferred<ItemResponse | null>()
+    getItem
+      .mockReturnValueOnce(first.promise)
+      .mockRejectedValueOnce(new Error('x'))
+      .mockResolvedValueOnce(response())
+    render(<ItemPage id={ID} navigate={navigate} />)
+    pullDown(200)
+    await screen.findByText("Couldn't load this item.")
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await screen.findByRole('heading', { level: 1, name: 'Heat pumps' })
+    expect(screen.queryByText("Couldn't refresh this item.")).toBeNull()
+  })
+})

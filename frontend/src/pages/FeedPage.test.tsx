@@ -375,3 +375,97 @@ describe('FeedPage pull during the first type list load', () => {
     expect(screen.getByRole('button', { name: 'news' })).toBeInTheDocument()
   })
 })
+
+describe('FeedPage flags after a newer request succeeds', () => {
+  type Page = { items: FeedItemSummary[]; nextCursor: string | null }
+
+  it('a successful Retry clears a refresh error from a pull that failed during the load error', async () => {
+    listItems
+      .mockRejectedValueOnce(new Error('x'))
+      .mockRejectedValueOnce(new Error('x'))
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByText("Couldn't load the feed.")
+    pullDown(200)
+    await waitFor(() => expect(listItems).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await screen.findByText('Title i_a')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a successful Retry after a failed Load more clears an earlier refresh error', async () => {
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: 'c2' })
+      .mockRejectedValueOnce(new Error('x'))
+      .mockRejectedValueOnce(new Error('x'))
+      .mockResolvedValueOnce({ items: [item('i_b')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByText('Title i_a')
+    pullDown(200)
+    expect(await screen.findByRole('alert')).toHaveTextContent("Couldn't refresh the feed.")
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }))
+    await screen.findByText("Couldn't load the feed.")
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await screen.findByText('Title i_b')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('Load more is usable right after a refresh even while an older Load more is pending', async () => {
+    const older = deferred<Page>()
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: 'c2' })
+      .mockReturnValueOnce(older.promise)
+      .mockResolvedValueOnce({ items: [item('i_new')], nextCursor: 'c9' })
+      .mockResolvedValueOnce({ items: [item('i_next')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Load more' }))
+    pullDown(200)
+    await screen.findByText('Title i_new')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Load more' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }))
+    await screen.findByText('Title i_next')
+    expect(listItems).toHaveBeenLastCalledWith({ cursor: 'c9' })
+    older.resolve({ items: [item('i_old')], nextCursor: 'c3' })
+    await settle(older.promise)
+    expect(screen.queryByText('Title i_old')).toBeNull()
+  })
+
+  it('an older Load more settling does not re-enable Load more while a newer one is pending', async () => {
+    const older = deferred<Page>()
+    const newer = deferred<Page>()
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: 'c2' })
+      .mockReturnValueOnce(older.promise)
+      .mockResolvedValueOnce({ items: [item('i_new')], nextCursor: 'c9' })
+      .mockReturnValueOnce(newer.promise)
+    render(<FeedPage navigate={navigate} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Load more' }))
+    pullDown(200)
+    await screen.findByText('Title i_new')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Load more' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }))
+    older.resolve({ items: [item('i_old')], nextCursor: 'c3' })
+    await settle(older.promise)
+    expect(screen.getByRole('button', { name: 'Load more' })).toBeDisabled()
+    newer.resolve({ items: [item('i_next')], nextCursor: null })
+    await screen.findByText('Title i_next')
+  })
+
+  it('a failed refresh does not leave Load more stuck when an older Load more was pending', async () => {
+    const older = deferred<Page>()
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: 'c2' })
+      .mockReturnValueOnce(older.promise)
+      .mockRejectedValueOnce(new Error('x'))
+      .mockResolvedValueOnce({ items: [item('i_b')], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Load more' }))
+    pullDown(200)
+    await screen.findByRole('alert')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Load more' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }))
+    await screen.findByText('Title i_b')
+    expect(listItems).toHaveBeenLastCalledWith({ cursor: 'c2' })
+  })
+})

@@ -64,7 +64,11 @@ export default function ItemPage({
   useEffect(() => {
     const current = ++generation.current
     api.getItem(id).then(
-      (data) => current === generation.current && setState(show(data)),
+      (data) => {
+        if (current !== generation.current) return
+        setState(show(data))
+        setRefreshFailed(false)
+      },
       () => current === generation.current && setState({ status: 'error' })
     )
   }, [id, attempt])
