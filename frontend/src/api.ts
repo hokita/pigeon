@@ -26,10 +26,21 @@ async function request<T>(path: string): Promise<T> {
 }
 
 const marksInFlight = new Set<Promise<unknown>>()
+const MAX_WAIT_FOR_MARKS_MS = 2000
+
+async function marksSettledOrTimeout(): Promise<void> {
+  if (marksInFlight.size === 0) return
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<void>((resolve) => {
+    timer = setTimeout(resolve, MAX_WAIT_FOR_MARKS_MS)
+  })
+  await Promise.race([Promise.allSettled([...marksInFlight]), timeout])
+  clearTimeout(timer)
+}
 
 export const api = {
   listItems: async ({ type, cursor }: { type?: string; cursor?: string }) => {
-    await Promise.allSettled([...marksInFlight])
+    await marksSettledOrTimeout()
     const params = new URLSearchParams()
     if (type) params.set('type', type)
     if (cursor) params.set('cursor', cursor)

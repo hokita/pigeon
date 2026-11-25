@@ -116,4 +116,21 @@ describe('api', () => {
     await expect(api.listItems({})).resolves.toEqual({ items: [], nextCursor: null })
     await marking
   })
+
+  it('listItems stops waiting for a markRead that hangs after 2 seconds', async () => {
+    vi.useFakeTimers()
+    try {
+      mockFetch.mockImplementationOnce(() => new Promise(() => undefined))
+      mockFetch.mockResolvedValue(ok({ items: [], nextCursor: null }))
+      void api.markRead('i_x').catch(() => undefined)
+      const listing = api.listItems({})
+      await vi.advanceTimersByTimeAsync(1999)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(1)
+      await expect(listing).resolves.toEqual({ items: [], nextCursor: null })
+      expect(mockFetch.mock.calls[1][0]).toBe('http://api.test/api/items')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
