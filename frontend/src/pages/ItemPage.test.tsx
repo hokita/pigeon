@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, render, screen, fireEvent, within, waitFor } from '@testing-library/react'
 import type { ItemResponse } from '../types'
 
-const { getItem } = vi.hoisted(() => ({ getItem: vi.fn() }))
-vi.mock('../api', () => ({ api: { getItem } }))
+const { getItem, markRead } = vi.hoisted(() => ({ getItem: vi.fn(), markRead: vi.fn() }))
+vi.mock('../api', () => ({ api: { getItem, markRead } }))
 
 import ItemPage from './ItemPage'
 import { pullDown } from '../testing/pull'
@@ -43,6 +43,7 @@ function response(over: Partial<ItemResponse['item']> = {}): ItemResponse {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  markRead.mockResolvedValue(undefined)
 })
 
 describe('ItemPage', () => {
@@ -305,5 +306,52 @@ describe('ItemPage flags after a newer request succeeds', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await screen.findByRole('heading', { level: 1, name: 'Heat pumps' })
     expect(screen.queryByText("Couldn't refresh this item.")).toBeNull()
+  })
+})
+
+describe('ItemPage marks the item read', () => {
+  it('posts the mark once an unread item has loaded', async () => {
+    getItem.mockResolvedValue(response({ unread: true }))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    await screen.findByRole('heading', { level: 1, name: 'Heat pumps' })
+    await waitFor(() => expect(markRead).toHaveBeenCalledWith(ID))
+  })
+
+  it('does not post for an item that is already read', async () => {
+    getItem.mockResolvedValue(response())
+    render(<ItemPage id={ID} navigate={navigate} />)
+    await screen.findByRole('heading', { level: 1, name: 'Heat pumps' })
+    expect(markRead).not.toHaveBeenCalled()
+  })
+
+  it('does not post for a missing item or a failed load', async () => {
+    getItem.mockResolvedValueOnce(null)
+    const { unmount } = render(<ItemPage id={ID} navigate={navigate} />)
+    await screen.findByText("This item doesn't exist.")
+    unmount()
+    getItem.mockRejectedValueOnce(new Error('x'))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    await screen.findByText("Couldn't load this item.")
+    expect(markRead).not.toHaveBeenCalled()
+  })
+
+  it('a failed mark leaves the page as it is', async () => {
+    markRead.mockRejectedValue(new Error('offline'))
+    getItem.mockResolvedValue(response({ unread: true }))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    await waitFor(() => expect(markRead).toHaveBeenCalled())
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Heat pumps')
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('a pull that brings back an unread version marks it read again', async () => {
+    getItem
+      .mockResolvedValueOnce(response({ unread: true }))
+      .mockResolvedValueOnce(response({ unread: true, title: 'Heat pumps v2' }))
+    render(<ItemPage id={ID} navigate={navigate} />)
+    await waitFor(() => expect(markRead).toHaveBeenCalledTimes(1))
+    pullDown(200)
+    await screen.findByRole('heading', { level: 1, name: 'Heat pumps v2' })
+    await waitFor(() => expect(markRead).toHaveBeenCalledTimes(2))
   })
 })

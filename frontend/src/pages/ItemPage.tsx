@@ -90,6 +90,12 @@ export default function ItemPage({
   const pull = usePullToRefresh(refresh)
 
   useEffect(() => {
+    if (state.status === 'ready' && state.data.item.unread) {
+      api.markRead(id).catch(() => undefined)
+    }
+  }, [state, id])
+
+  useEffect(() => {
     if (state.status === 'ready') document.title = `${state.data.item.title} · pigeon`
   }, [state])
 
