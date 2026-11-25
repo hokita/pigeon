@@ -11,6 +11,7 @@ export type FeedItemSummary = {
   summary: string
   createdAt: string
   publishedAt: string | null
+  unread: boolean
   products: FeedProductSummary[]
 }
 

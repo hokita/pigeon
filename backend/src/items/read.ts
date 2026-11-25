@@ -15,6 +15,7 @@ export type FeedItemSummary = {
   summary: string
   createdAt: string
   publishedAt: string | null
+  unread: boolean
   products: FeedProductSummary[]
 }
 
@@ -69,6 +70,7 @@ function summaryOf(id: string, d: DocumentData): FeedItemSummary {
     summary: d.summary,
     createdAt: iso(d.createdAt),
     publishedAt: d.publishedAt ? iso(d.publishedAt) : null,
+    unread: d.unread === true,
     products: (d.products ?? []).map((p: DocumentData) => ({
       name: p.name,
       price: p.price,

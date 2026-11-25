@@ -157,8 +157,20 @@ export async function saveFeedItem(
       createdAt: (existing?.createdAt as Timestamp | undefined) ?? now,
       updatedAt: now,
       origin: 'mcp',
+      unread: true,
     })
     return existing ? 'updated' : 'created'
   })
   return { id, status }
+}
+
+export async function markItemRead(id: string): Promise<boolean> {
+  const db = getFirestore()
+  const ref = db.doc(`items/${id}`)
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref)
+    if (!snap.exists) return false
+    if (snap.get('unread') === true) tx.update(ref, { unread: false })
+    return true
+  })
 }

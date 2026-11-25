@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { getFirestore, Timestamp } from 'firebase-admin/firestore'
-import { itemIdFor, saveFeedItem } from './store.js'
+import { FieldValue, getFirestore, Timestamp } from 'firebase-admin/firestore'
+import { itemIdFor, markItemRead, saveFeedItem } from './store.js'
 import { parseFeedItemInput } from './input.js'
 import { loadFixture } from '../testing/fixtures.js'
 
@@ -266,5 +266,48 @@ describe('saveFeedItem', () => {
     const [source] = (await item(b.id)).content.sources
     expect(source).toEqual({ title: 'Note' })
     expect(Object.keys(source)).toEqual(['title'])
+  })
+})
+
+describe('unread', () => {
+  it('a new item is unread', async () => {
+    const { id } = await save(loadFixture('sample-news'))
+    expect((await item(id)).unread).toBe(true)
+  })
+
+  it('markItemRead clears it without touching updatedAt', async () => {
+    const { id } = await save(loadFixture('sample-news'))
+    const before = await item(id)
+    expect(await markItemRead(id)).toBe(true)
+    const after = await item(id)
+    expect(after.unread).toBe(false)
+    expect(after.updatedAt.isEqual(before.updatedAt)).toBe(true)
+  })
+
+  it('a re-save that replaces the item makes it unread again', async () => {
+    const { id } = await save(loadFixture('sample-news'))
+    await markItemRead(id)
+    const res = await save({ ...loadFixture('sample-news'), summary: 'Updated summary' })
+    expect(res.status).toBe('updated')
+    expect((await item(id)).unread).toBe(true)
+  })
+
+  it('an unchanged re-save keeps the item read', async () => {
+    const { id } = await save(loadFixture('sample-news'))
+    await markItemRead(id)
+    expect((await save(loadFixture('sample-news'))).status).toBe('unchanged')
+    expect((await item(id)).unread).toBe(false)
+  })
+
+  it('markItemRead on an unknown id is false and creates nothing', async () => {
+    expect(await markItemRead('i_0123456789abcdef0123')).toBe(false)
+    expect((await db().collection('items').get()).size).toBe(0)
+  })
+
+  it('markItemRead on an old item without the field leaves it read', async () => {
+    const { id } = await save(loadFixture('sample-news'))
+    await db().doc(`items/${id}`).update({ unread: FieldValue.delete() })
+    expect(await markItemRead(id)).toBe(true)
+    expect((await item(id)).unread).not.toBe(true)
   })
 })

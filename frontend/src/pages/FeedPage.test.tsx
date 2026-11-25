@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { act, render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import type { FeedItemSummary } from '../types'
 
 const { listItems, listTypes } = vi.hoisted(() => ({ listItems: vi.fn(), listTypes: vi.fn() }))
@@ -15,6 +15,7 @@ const item = (id: string, over: Partial<FeedItemSummary> = {}): FeedItemSummary 
   summary: `Summary ${id}`,
   createdAt: '2026-11-15T00:00:00.000Z',
   publishedAt: null,
+  unread: false,
   products: [],
   ...over,
 })
@@ -31,6 +32,33 @@ beforeEach(() => {
 })
 
 describe('FeedPage', () => {
+  it('an unread item shows a dot and a bold title; a read one does not', async () => {
+    listItems.mockResolvedValue({
+      items: [item('i_a', { unread: true }), item('i_b')],
+      nextCursor: null,
+    })
+    render(<FeedPage navigate={navigate} />)
+    const [unread, read] = await screen.findAllByRole('link')
+    expect(within(unread).getByTestId('unread-dot')).toBeInTheDocument()
+    expect(unread).toHaveAccessibleName(/Unread:\s*Title i_a/)
+    expect(within(unread).getByRole('heading')).toHaveClass('font-bold')
+    expect(within(read).queryByTestId('unread-dot')).toBeNull()
+    expect(read).not.toHaveAccessibleName(/Unread/)
+    expect(within(read).getByRole('heading')).toHaveClass('font-normal')
+  })
+
+  it('after returning from an item the refetched feed shows it read', async () => {
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a', { unread: true })], nextCursor: null })
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: null })
+    const { unmount } = render(<FeedPage navigate={navigate} />)
+    await screen.findByTestId('unread-dot')
+    unmount()
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByText('Title i_a')
+    expect(screen.queryByTestId('unread-dot')).toBeNull()
+  })
+
   it('renders items newest first as given', async () => {
     render(<FeedPage navigate={navigate} />)
     const links = await screen.findAllByRole('link')
@@ -147,6 +175,17 @@ const types = (...names: string[]) =>
   names.map((type) => ({ type, count: 1, lastItemAt: '2026-11-15T00:00:00.000Z' }))
 
 describe('FeedPage pull to refresh', () => {
+  it('a pull shows an item Muse re-saved as unread', async () => {
+    listItems
+      .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: null })
+      .mockResolvedValueOnce({ items: [item('i_a', { unread: true })], nextCursor: null })
+    render(<FeedPage navigate={navigate} />)
+    await screen.findByText('Title i_a')
+    expect(screen.queryByTestId('unread-dot')).toBeNull()
+    pullDown(200)
+    expect(await screen.findByTestId('unread-dot')).toBeInTheDocument()
+  })
+
   it('refetches the first page with the same type and resets Load more', async () => {
     listItems
       .mockResolvedValueOnce({ items: [item('i_a')], nextCursor: 'c2' })

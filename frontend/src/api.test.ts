@@ -66,4 +66,71 @@ describe('api', () => {
     await expect(api.listItems({})).rejects.toThrow('Not signed in')
     expect(mockFetch).not.toHaveBeenCalled()
   })
+
+  it('markRead POSTs with the bearer token', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 204,
+      json: async () => {
+        throw new Error('no body')
+      },
+    })
+    await api.markRead('i_x')
+    expect(mockFetch).toHaveBeenCalledWith(
+      'http://api.test/api/items/i_x/read',
+      expect.objectContaining({
+        method: 'POST',
+        headers: expect.objectContaining({ Authorization: 'Bearer fake-token' }),
+      })
+    )
+  })
+
+  it('markRead rejects on an error status', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 500, json: async () => ({}) })
+    await expect(api.markRead('i_x')).rejects.toThrow('API error: 500')
+  })
+
+  it('listItems waits for a markRead still in flight', async () => {
+    let finish: (v: unknown) => void = () => undefined
+    mockFetch.mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          finish = r
+        })
+    )
+    mockFetch.mockResolvedValue(ok({ items: [], nextCursor: null }))
+    const marking = api.markRead('i_x')
+    const listing = api.listItems({})
+    await new Promise((r) => setTimeout(r, 0))
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    finish({ ok: true, status: 204, json: async () => ({}) })
+    await marking
+    await listing
+    expect(mockFetch.mock.calls[1][0]).toBe('http://api.test/api/items')
+  })
+
+  it('a failed markRead does not block or fail listItems', async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+    mockFetch.mockResolvedValue(ok({ items: [], nextCursor: null }))
+    const marking = api.markRead('i_x').catch(() => undefined)
+    await expect(api.listItems({})).resolves.toEqual({ items: [], nextCursor: null })
+    await marking
+  })
+
+  it('listItems stops waiting for a markRead that hangs after 2 seconds', async () => {
+    vi.useFakeTimers()
+    try {
+      mockFetch.mockImplementationOnce(() => new Promise(() => undefined))
+      mockFetch.mockResolvedValue(ok({ items: [], nextCursor: null }))
+      void api.markRead('i_x').catch(() => undefined)
+      const listing = api.listItems({})
+      await vi.advanceTimersByTimeAsync(1999)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(1)
+      await expect(listing).resolves.toEqual({ items: [], nextCursor: null })
+      expect(mockFetch.mock.calls[1][0]).toBe('http://api.test/api/items')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })

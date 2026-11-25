@@ -37,7 +37,21 @@ export function FeedCard({
             {formatDate(item.publishedAt ?? item.createdAt)}
           </time>
         </div>
-        <h2 className="mt-2 mb-1 text-base font-semibold break-words">{item.title}</h2>
+        <h2
+          className={`mt-2 mb-1 text-base break-words ${item.unread ? 'font-bold' : 'font-normal'}`}
+        >
+          {item.unread && (
+            <>
+              <span
+                data-testid="unread-dot"
+                aria-hidden="true"
+                className="mr-2 inline-block size-2 rounded-full bg-primary align-middle"
+              />
+              <span className="sr-only">Unread: </span>
+            </>
+          )}
+          {item.title}
+        </h2>
         <p className="m-0 text-sm text-muted-foreground line-clamp-3 break-words">{item.summary}</p>
         {product && (
           <p className="mt-2 mb-0 text-sm [overflow-wrap:anywhere]">
