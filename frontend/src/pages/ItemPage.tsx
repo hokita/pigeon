@@ -1,8 +1,10 @@
-import { useEffect, useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { api } from '../api'
 import ItemRenderer from '../components/ItemRenderer'
 import { TypeBadge } from '../components/FeedCard'
 import { formatDate } from '../format'
+import { PullIndicator } from '../pullToRefresh/PullIndicator'
+import { usePullToRefresh } from '../pullToRefresh/usePullToRefresh'
 import { safeLinkUrl } from '../generative-ui/safeUrl'
 import type { Route } from '../router'
 import type { FeedSource, ItemResponse } from '../types'
@@ -12,6 +14,9 @@ type State =
   | { status: 'error' }
   | { status: 'missing' }
   | { status: 'ready'; data: ItemResponse }
+
+const show = (data: ItemResponse | null): State =>
+  data ? { status: 'ready', data } : { status: 'missing' }
 
 function Sources({ sources }: { sources: FeedSource[] }) {
   if (sources.length === 0) return null
@@ -53,17 +58,36 @@ export default function ItemPage({
 }) {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [attempt, setAttempt] = useState(0)
+  const [refreshFailed, setRefreshFailed] = useState(false)
+  const generation = useRef(0)
 
   useEffect(() => {
-    let active = true
+    const current = ++generation.current
     api.getItem(id).then(
-      (data) => active && setState(data ? { status: 'ready', data } : { status: 'missing' }),
-      () => active && setState({ status: 'error' })
+      (data) => {
+        if (current !== generation.current) return
+        setState(show(data))
+        setRefreshFailed(false)
+      },
+      () => current === generation.current && setState({ status: 'error' })
     )
-    return () => {
-      active = false
-    }
   }, [id, attempt])
+
+  async function refresh() {
+    const current = ++generation.current
+    try {
+      const data = await api.getItem(id)
+      if (current !== generation.current) return
+      setState(show(data))
+      setRefreshFailed(false)
+    } catch {
+      if (current !== generation.current) return
+      setRefreshFailed(true)
+      setState((s) => (s.status === 'loading' ? { status: 'error' } : s))
+    }
+  }
+
+  const pull = usePullToRefresh(refresh)
 
   useEffect(() => {
     if (state.status === 'ready') document.title = `${state.data.item.title} · pigeon`
@@ -76,9 +100,22 @@ export default function ItemPage({
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-6">
+      <PullIndicator distance={pull.distance} refreshing={pull.refreshing} />
       <a href="/" onClick={back} className="text-sm text-muted-foreground no-underline">
         ← Feed
       </a>
+      {state.status === 'ready' && refreshFailed && (
+        <div role="alert" className="mt-4">
+          <p>Couldn&apos;t refresh this item.</p>
+          <button
+            type="button"
+            onClick={pull.refresh}
+            className="rounded-md border border-border px-4 py-2"
+          >
+            Retry
+          </button>
+        </div>
+      )}
       {state.status === 'loading' && <p className="text-muted-foreground">Loading…</p>}
       {state.status === 'missing' && <p>This item doesn&apos;t exist.</p>}
       {state.status === 'error' && (

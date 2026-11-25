@@ -72,6 +72,11 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  overscroll-behavior-y: none;
+}
+
 [data-aui] {
   min-width: 0;
   overflow-wrap: anywhere;
