@@ -9,10 +9,13 @@ Every feed item looks the same, so the owner can't tell what Muse added since th
 
 ## What the owner sees
 
-- In the feed, an unread item shows a small dot and a bold title. Nothing else on the card changes.
+- In the feed, an unread item shows a small dot and a bold title; a read item's title is normal
+  weight (owner's choice, 2026-11-25, as in the mockup). Nothing else on the card changes.
 - An item becomes read when the owner opens its item page. Scrolling past it in the feed doesn't count.
 - A new item saved by Muse is unread.
 - When Muse saves the same item again (same `dedupeKey`, which replaces it), it is unread again.
+  A save with identical content replaces nothing (the backend skips the write), so a read item
+  stays read (owner's choice, 2026-11-25).
 - Items saved before this change have no mark and count as read. There is no migration.
 
 ## Where the state lives

@@ -20,15 +20,17 @@
 - Items without the `unread` field count as read. No migration.
 - The mark-read call is a POST of its own, never a side effect of `GET`. It sits behind the existing `userAuth` on the items router.
 - Not included: unread count, "unread only" filter, "mark all read", any change to MCP tools or Muse's instructions.
-- Read cards keep today's card exactly; unread cards add the dot and a bold title, nothing else.
+- Unread cards: dot + `font-bold` title. Read cards: `font-normal` title (owner's choice). Nothing else on the card changes.
 - Never commit secrets, project IDs, emails, or real item data; tests use fixtures and `RUN`-suffixed titles.
 
 ## Decisions taken in this plan
 
+- **Execution: native** (owner's choice, 2026-11-25): one implementer runs every task in order, then one fresh review of the whole branch.
+
 - **Back to the feed = refetch, no local patch.** `App` renders either `ItemPage` or `FeedPage`, so returning (the "← Feed" link or browser/iOS back via `popstate`) always remounts `FeedPage`, which loads page 1 again. Unread state therefore always comes from the server, the same as after a pull-to-refresh. The only race is a quick back before the POST commits; `api` closes it by making `listItems` await in-flight `markRead` calls (settled, success or failure).
 - **Mark only when needed.** `ItemPage` calls `markRead` when it holds `ready` data with `unread: true`, so already-read items cost no write and a missing item sends nothing. A pull-to-refresh on the item page that returns `unread: true` (Muse re-saved while it was open) marks it read again, because the owner is looking at the new version.
 - **A failed mark is silent.** The page renders normally; the dot stays and the next open tries again.
-- **An identical re-save stays read** (status `unchanged`: same `dedupeKey` and same `contentHash`, nothing is written). Only a save that replaces the doc (`created`/`updated`) sets `unread: true`. _Owner to confirm; see the hand-off._ Flipping it is a one-line change in `saveFeedItem` plus the test `an unchanged re-save keeps the item read`.
+- **An identical re-save stays read** (status `unchanged`: same `dedupeKey` and same `contentHash`, nothing is written). Only a save that replaces the doc (`created`/`updated`) sets `unread: true`. Confirmed by the owner on 2026-11-25.
 - **Known gap, accepted:** if Muse re-saves between the item page's GET and its POST, the newer version is marked read unseen. Rare; fixing it needs a version token on the POST, which the spec doesn't ask for.
 
 ## Review Focus
@@ -279,7 +281,7 @@ it('a failed markRead does not block or fail listItems', async () => {
 **Interfaces:**
 
 - Consumes: `FeedItemSummary.unread` (Task 4).
-- Produces: in an unread card's `<h2>`, a dot `<span data-testid="unread-dot" aria-hidden="true">` (Tailwind: `inline-block size-2 rounded-full bg-primary mr-2 align-middle`, match the badge/chip colours) and `<span className="sr-only">Unread: </span>` before the title; the `<h2>` uses `font-bold` instead of `font-semibold`. Read cards render exactly as today.
+- Produces: in an unread card's `<h2>`, a dot `<span data-testid="unread-dot" aria-hidden="true">` (Tailwind: `inline-block size-2 rounded-full bg-primary mr-2 align-middle`, match the badge/chip colours) and `<span className="sr-only">Unread: </span>` before the title; the `<h2>` uses `font-bold` when unread and `font-normal` when read (replacing today's `font-semibold` for both). Nothing else on the card changes.
 
 - [ ] **Step 1: Write the failing tests** in `FeedPage.test.tsx`:
 
@@ -296,7 +298,7 @@ it('an unread item shows a dot and a bold title; a read one does not', async () 
   expect(within(unread).getByRole('heading')).toHaveClass('font-bold')
   expect(within(read).queryByTestId('unread-dot')).toBeNull()
   expect(read).not.toHaveAccessibleName(expect.stringContaining('Unread'))
-  expect(within(read).getByRole('heading')).toHaveClass('font-semibold')
+  expect(within(read).getByRole('heading')).toHaveClass('font-normal')
 })
 
 it('after returning from an item the refetched feed shows it read', async () => {
@@ -457,4 +459,5 @@ Plus `test.beforeEach(async ({ page }) => { await routeImages(page) })` as in `f
 - [ ] `frontend`: `npm test && npm run lint && npm run format:check && npm run build`
 - [ ] `e2e`: `CI=1 npm test && npm run test:servers-stopped`
 - [ ] `git grep -n -E "eslint-disable|@ts-ignore|@ts-expect-error|biome-ignore"` on the diff → nothing new.
+- [ ] One fresh review of the whole branch against the spec and this plan; fix what it finds.
 - [ ] Ask the owner before pushing or opening a PR.
