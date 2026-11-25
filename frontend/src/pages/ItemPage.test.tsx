@@ -33,6 +33,7 @@ function response(over: Partial<ItemResponse['item']> = {}): ItemResponse {
         root: { $type: 'Col', children: [{ $type: 'Header', text: 'Tree header' }] },
       },
       uiStatus: 'valid',
+      unread: false,
       products: [],
       ...over,
     },

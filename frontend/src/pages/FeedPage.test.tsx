@@ -15,6 +15,7 @@ const item = (id: string, over: Partial<FeedItemSummary> = {}): FeedItemSummary 
   summary: `Summary ${id}`,
   createdAt: '2026-11-15T00:00:00.000Z',
   publishedAt: null,
+  unread: false,
   products: [],
   ...over,
 })
